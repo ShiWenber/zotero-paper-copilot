@@ -36,6 +36,7 @@ export interface StreamCallback {
   (chunk: string): void;
   onComplete?: (fullContent: string) => void;
   onError?: (error: Error) => void;
+  onChunk?: (chunk: string) => void;
 }
 
 export class LLMAPI {
@@ -166,6 +167,27 @@ export class LLMAPI {
         throw new Error(`Unsupported provider: ${this.config.provider}`);
     }
   }
+
+  /**
+   * Stream chat completion with extended callback options
+   */
+  public static async streamChatWithCallbacks(
+    messages: ChatMessage[],
+    callbacks: {
+      onChunk?: (chunk: string) => void;
+      onComplete?: (fullContent: string) => void;
+      onError?: (error: Error) => void;
+    },
+    options?: { temperature?: number; maxTokens?: number }
+  ): Promise<LLMResponse> {
+    const callback: StreamCallback = (chunk: string) => {
+      callbacks.onChunk?.(chunk);
+    };
+    callback.onComplete = callbacks.onComplete;
+    callback.onError = callbacks.onError;
+    
+    return this.streamChat(messages, callback, options);
+  }
   
   /**
    * OpenAI Chat API
@@ -261,6 +283,7 @@ export class LLMAPI {
               if (content) {
                 fullContent += content;
                 callback(content);
+                callback.onChunk?.(content);
               }
             } catch (e) {
               // Skip malformed JSON
@@ -395,6 +418,7 @@ export class LLMAPI {
                 if (content) {
                   fullContent += content;
                   callback(content);
+                  callback.onChunk?.(content);
                 }
               } else if (parsed.type === "message_delta") {
                 // Done
