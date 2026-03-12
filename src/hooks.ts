@@ -9,6 +9,7 @@ import { getString, initLocale } from "./utils/locale";
 import { registerPrefsScripts } from "./modules/preferenceScript";
 import { createZToolkit } from "./utils/ztoolkit";
 import { SidebarUI } from "./modules/sidebar";
+import { initPDFSelection } from "./modules/pdf-selection";
 
 async function onStartup() {
   await Promise.all([
@@ -93,6 +94,9 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
 
   // Register Paper Copilot Sidebar
   SidebarUI.create(win);
+  
+  // Initialize PDF text selection listener
+  initPDFSelection(win);
   
   // Add menu item to toggle sidebar
   const menuItem = win.document.createElement("menuitem");

@@ -172,4 +172,42 @@ export class SidebarUI {
       }
     }
   }
+  
+  /**
+   * Show selected text in sidebar (called from PDF selection)
+   */
+  public static showSelectedText(win: Window, text: string): void {
+    const content = win.document.querySelector("#" + this.sidebarId + " > div:nth-child(2)");
+    if (content) {
+      (content as HTMLElement).style.display = "block";
+      
+      const displayText = text.length > 500 ? text.substring(0, 500) + "..." : text;
+      const escapedText = displayText.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      
+      content.innerHTML = 
+        '<div style="padding: 16px;">' +
+        '<div style="font-size: 12px; color: #999; margin-bottom: 8px;">Selected Text:</div>' +
+        '<div style="background: #f5f5f5; padding: 12px; border-radius: 6px; font-size: 14px; line-height: 1.6; margin-bottom: 16px; max-height: 200px; overflow-y: auto;">' +
+        escapedText +
+        '</div>' +
+        '<div style="display: flex; gap: 8px;">' +
+        '<button id="btn-ask-about-selection" style="flex: 1; padding: 10px 16px; background: #0066cc; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">💬 Ask AI</button>' +
+        '<button id="btn-translate-selection" style="flex: 1; padding: 10px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">🌐 Translate</button>' +
+        '</div>' +
+        '</div>';
+      
+      win.document.getElementById("btn-ask-about-selection")?.addEventListener("click", () => {
+        this.showMessage(win, "🤖 AI Question feature coming soon!");
+      });
+      
+      win.document.getElementById("btn-translate-selection")?.addEventListener("click", () => {
+        this.showMessage(win, "🌐 Translation feature coming soon!");
+      });
+    }
+    
+    const chatArea = win.document.getElementById("paper-copilot-chat-area");
+    if (chatArea) {
+      chatArea.style.display = "none";
+    }
+  }
 }
