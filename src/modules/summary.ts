@@ -1,385 +1,372 @@
 /**
  * Zotero Paper Copilot - Summary Module
  * 
- * Generate detailed paper summaries using LLM API
- * Extracts paper metadata and generates comprehensive summaries
+ * Generates paper abstracts using LLM API
+ * Supports streaming output and custom summary length
  */
 
-import { LLMAPI, ChatMessage } from "./llm-api";
+import { callLLM, callLLMWithStream, LLMMessage, getLLMConfig, StreamChunk } from "./llm-api";
 
-export interface PaperInfo {
-  title?: string;
-  authors?: string[];
-  abstract?: string;
-  year?: number;
-  journal?: string;
-  doi?: string;
+export interface PDFBlock {
+  id: string;
+  type: "title" | "heading" | "subheading" | "paragraph" | "figure" | "table" | "page-number" | "other";
+  level: number;
+  text: string;
+  page: number;
 }
+
+export type SummaryLength = "short" | "medium" | "long";
 
 export interface SummaryOptions {
-  includeKeyFindings?: boolean;
-  includeMethods?: boolean;
-  includeLimitations?: boolean;
-  maxLength?: number;
-  stream?: boolean;
+  length: SummaryLength;
+  language?: "en" | "zh" | "auto";
+  includeKeywords?: boolean;
+  includeHighlights?: boolean;
 }
 
-export interface SummaryResult {
+/**
+ * Default summary options
+ */
+export const DEFAULT_SUMMARY_OPTIONS: SummaryOptions = {
+  length: "medium",
+  language: "auto",
+  includeKeywords: true,
+  includeHighlights: true,
+};
+
+/**
+ * Get summary length configuration
+ */
+function getLengthConfig(length: SummaryLength): {
+  maxTokens: number;
+  promptSuffix: string;
+} {
+  switch (length) {
+    case "short":
+      return {
+        maxTokens: 200,
+        promptSuffix: "请用50-100字简洁概括论文主要内容。",
+      };
+    case "medium":
+      return {
+        maxTokens: 500,
+        promptSuffix: "请用200-300字概括论文的主要内容、研究方法和结论。",
+      };
+    case "long":
+      return {
+        maxTokens: 1000,
+        promptSuffix: "请用500-800字详细概括论文的主要内容、研究背景、方法、实验结果和贡献。",
+      };
+  }
+}
+
+/**
+ * Language mapping for prompts
+ */
+function getLanguagePrompt(language: "en" | "zh" | "auto"): string {
+  switch (language) {
+    case "en":
+      return "请用英文回复。";
+    case "zh":
+      return "请用中文回复。";
+    case "auto":
+      return "请使用论文的原始语言回复。";
+  }
+}
+
+/**
+ * Build prompt for summary generation
+ */
+function buildSummaryPrompt(
+  paperContent: string,
+  options: SummaryOptions
+): LLMMessage[] {
+  const lengthConfig = getLengthConfig(options.length);
+  const languagePrompt = getLanguagePrompt(options.language || "auto");
+  
+  let prompt = `请阅读以下论文内容，然后生成摘要。\n\n${lengthConfig.promptSuffix}${languagePrompt}\n\n`;
+  
+  if (options.includeKeywords) {
+    prompt += "请同时列出3-5个关键词。\n";
+  }
+  
+  if (options.includeHighlights) {
+    prompt += "请列出2-3个论文的主要亮点或贡献。\n";
+  }
+  
+  prompt += `\n论文内容：\n${paperContent}`;
+  
+  return [
+    {
+      role: "system",
+      content: "你是一个学术论文助手，擅长阅读和总结科研论文。你的摘要应该准确、简洁、客观。",
+    },
+    {
+      role: "user",
+      content: prompt,
+    },
+  ];
+}
+
+/**
+ * Extract relevant text from PDF blocks for summary
+ */
+export function extractPaperContent(
+  blocks: PDFBlock[],
+  maxChars: number = 8000
+): string {
+  // Get all paragraphs and headings
+  const relevantBlocks = blocks.filter(
+    (b) => b.type === "paragraph" || b.type === "heading" || b.type === "subheading" || b.type === "title"
+  );
+  
+  let content = "";
+  for (const block of relevantBlocks) {
+    if (content.length + block.text.length > maxChars) {
+      content += block.text.substring(0, maxChars - content.length);
+      break;
+    }
+    content += block.text + "\n\n";
+  }
+  
+  return content.trim();
+}
+
+/**
+ * Generate summary (non-streaming)
+ */
+export async function generateSummary(
+  paperContent: string,
+  options: Partial<SummaryOptions> = {}
+): Promise<{
   summary: string;
-  keyFindings?: string[];
-  methods?: string;
-  limitations?: string;
-  model: string;
+  keywords?: string[];
+  highlights?: string[];
   usage?: {
     promptTokens: number;
     completionTokens: number;
     totalTokens: number;
   };
-}
-
-export interface StreamSummaryCallback {
-  (chunk: string): void;
-  onComplete?: (result: SummaryResult) => void;
-  onError?: (error: Error) => void;
-}
-
-export class PaperSummary {
-  private static initialized = false;
+}> {
+  const opts = { ...DEFAULT_SUMMARY_OPTIONS, ...options };
+  const messages = buildSummaryPrompt(paperContent, opts);
+  const lengthConfig = getLengthConfig(opts.length);
   
-  /**
-   * Initialize the summary module
-   */
-  public static init(): void {
-    if (this.initialized) {
-      return;
-    }
-    
-    this.initialized = true;
-    
-    if (typeof ztoolkit !== "undefined") {
-      ztoolkit.log("Paper Copilot: Summary module initialized");
-    }
-  }
+  const response = await callLLM(messages, {
+    maxTokens: lengthConfig.maxTokens,
+  });
   
-  /**
-   * Extract paper metadata from Zotero item
-   */
-  public static async extractPaperInfo(item: any): Promise<PaperInfo> {
-    const info: PaperInfo = {};
-    
-    try {
-      if (!item) {
-        return info;
-      }
-      
-      // Get title
-      info.title = item.getField?.("title") || item.title;
-      
-      // Get authors
-      const creators = item.getField?.("creators") || item.creators;
-      if (creators && Array.isArray(creators)) {
-        info.authors = creators.map((c: any) => {
-          if (c.firstName || c.lastName) {
-            return `${c.firstName || ""} ${c.lastName || ""}`.trim();
-          }
-          return c.name || "";
-        }).filter(Boolean);
-      }
-      
-      // Get publication info
-      info.journal = item.getField?.("publicationTitle") || item.publicationTitle;
-      info.year = item.getField?.("year") || item.year;
-      info.doi = item.getField?.("DOI") || item.DOI;
-      
-      // Get abstract (may be in different fields depending on item type)
-      info.abstract = item.getField?.("abstractNote") || item.abstractNote;
-      
-    } catch (e) {
-      if (typeof ztoolkit !== "undefined") {
-        ztoolkit.log("Paper Copilot: Error extracting paper info:", e);
-      }
-    }
-    
-    return info;
-  }
+  const content = response.choices[0]?.message?.content || "";
   
-  /**
-   * Generate a comprehensive summary of the paper
-   */
-  public static async generateSummary(
-    paperInfo: PaperInfo,
-    options?: SummaryOptions
-  ): Promise<SummaryResult> {
-    const opts = {
-      includeKeyFindings: true,
-      includeMethods: true,
-      includeLimitations: false,
-      maxLength: 500,
-      ...options,
+  // Parse response to extract keywords and highlights
+  const result: {
+    summary: string;
+    keywords?: string[];
+    highlights?: string[];
+    usage?: {
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
     };
-    
-    if (!LLMAPI.isConfigured()) {
-      throw new Error("LLM API not configured. Please set up your API key in preferences.");
+  } = {
+    summary: content,
+  };
+  
+  // Extract keywords if requested
+  if (opts.includeKeywords) {
+    const keywordsMatch = content.match(/关键词[：:]\s*([^\n]+)/);
+    if (keywordsMatch) {
+      result.keywords = keywordsMatch[1].split(/[,，、]/).map((k) => k.trim()).filter(Boolean);
     }
     
-    // Build prompt based on options
-    const messages = this.buildSummaryPrompt(paperInfo, opts);
-    
-    // Make API call
-    const response = await LLMAPI.chat(messages, {
-      temperature: 0.5,
-      maxTokens: opts.maxLength ? opts.maxLength * 4 : 2000,
-    });
-    
-    // Parse response
-    return this.parseSummaryResponse(response.content, response.model, response.usage);
+    const keywordsMatchEn = content.match(/Keywords?:\s*([^\n]+)/i);
+    if (keywordsMatchEn && !result.keywords) {
+      result.keywords = keywordsMatchEn[1].split(/[,，、]/).map((k) => k.trim()).filter(Boolean);
+    }
   }
   
-  /**
-   * Generate summary with streaming output
-   */
-  public static async generateSummaryStream(
-    paperInfo: PaperInfo,
-    callback: StreamSummaryCallback,
-    options?: SummaryOptions
-  ): Promise<SummaryResult> {
-    const opts = {
-      includeKeyFindings: true,
-      includeMethods: true,
-      includeLimitations: false,
-      maxLength: 500,
-      ...options,
+  // Extract highlights if requested
+  if (opts.includeHighlights) {
+    const highlightsMatch = content.match(/主要亮点[：:]\s*([^\n]+)/);
+    if (highlightsMatch) {
+      result.highlights = highlightsMatch[1].split(/[,，、]/).map((h) => h.trim()).filter(Boolean);
+    }
+    
+    const highlightsMatchEn = content.match(/Highlights?:\s*([^\n]+)/i);
+    if (highlightsMatchEn && !result.highlights) {
+      result.highlights = highlightsMatchEn[1].split(/[,，、]/).map((h) => h.trim()).filter(Boolean);
+    }
+  }
+  
+  if (response.usage) {
+    result.usage = {
+      promptTokens: response.usage.prompt_tokens,
+      completionTokens: response.usage.completion_tokens,
+      totalTokens: response.usage.total_tokens,
     };
-    
-    if (!LLMAPI.isConfigured()) {
-      throw new Error("LLM API not configured. Please set up your API key in preferences.");
-    }
-    
-    // Build prompt based on options
-    const messages = this.buildSummaryPrompt(paperInfo, opts);
-    
-    let fullContent = "";
-    let fullResult: SummaryResult | null = null;
-    
-    // Make streaming API call
-    const response = await LLMAPI.chat(messages, {
-      stream: (chunk) => {
-        fullContent += chunk;
-        callback(chunk);
-      },
-      temperature: 0.5,
-      maxTokens: opts.maxLength ? opts.maxLength * 4 : 2000,
-    });
-    
-    // Build result
-    fullResult = this.parseSummaryResponse(fullContent, response.model);
-    
-    callback.onComplete?.(fullResult);
-    
-    return fullResult;
   }
   
-  /**
-   * Build summary prompt based on paper info and options
-   */
-  private static buildSummaryPrompt(paperInfo: PaperInfo, options: SummaryOptions): ChatMessage[] {
-    const parts: string[] = [];
-    
-    // Title
-    if (paperInfo.title) {
-      parts.push(`Paper Title: ${paperInfo.title}`);
-    }
-    
-    // Authors
-    if (paperInfo.authors && paperInfo.authors.length > 0) {
-      parts.push(`Authors: ${paperInfo.authors.join(", ")}`);
-    }
-    
-    // Year and journal
-    if (paperInfo.year) {
-      parts.push(`Year: ${paperInfo.year}`);
-    }
-    if (paperInfo.journal) {
-      parts.push(`Journal: ${paperInfo.journal}`);
-    }
-    
-    // Abstract
-    if (paperInfo.abstract) {
-      parts.push(`\nAbstract:\n${paperInfo.abstract}`);
-    }
-    
-    // Build system prompt
-    let systemPrompt = `You are a helpful academic research assistant. 
-Your task is to provide a clear and comprehensive summary of the given research paper.
-`;
-    
-    const userInstructions: string[] = [];
-    
-    userInstructions.push("Please provide a detailed summary of this paper that includes:");
-    userInstructions.push("1. **Main Research Question/Objective**: What problem does this paper address?");
-    userInstructions.push("2. **Key Methods**: What methodology or approach did the authors use?");
-    userInstructions.push("3. **Main Findings**: What are the most important results or discoveries?");
-    userInstructions.push("4. **Conclusions**: What conclusions do the authors draw? What are the implications?");
-    
-    if (options.includeKeyFindings) {
-      userInstructions.push("5. **Key Findings (Bullet Points)**: List 3-5 key findings in bullet point format");
-    }
-    
-    if (options.includeMethods) {
-      userInstructions.push("6. **Methodology Details**: Provide more detail about the research methods used");
-    }
-    
-    if (options.includeLimitations) {
-      userInstructions.push("7. **Limitations**: What are the limitations mentioned by the authors?");
-    }
-    
-    userInstructions.push("\nFormat the summary with clear headings and bullet points for readability.");
-    userInstructions.push(`Keep the summary concise but informative (around ${options.maxLength || 500} words for the main summary).`);
-    
-    return [
-      { role: "system", content: systemPrompt },
-      { 
-        role: "user", 
-        content: `${parts.join("\n")}\n\n${userInstructions.join("\n")}` 
-      },
-    ];
-  }
-  
-  /**
-   * Parse LLM response into structured summary
-   */
-  private static parseSummaryResponse(
-    content: string,
-    model: string,
-    usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
-  ): SummaryResult {
-    const result: SummaryResult = {
-      summary: content,
-      model,
-      usage,
-    };
-    
-    // Try to extract structured sections from the response
-    try {
-      // Extract key findings (look for bullet points)
-      const findingsMatch = content.match(/Key Findings[:\s]*(?:[-•*]\s*(.+?)(?:\n|$))+/i);
-      if (findingsMatch) {
-        const findings = content.match(/[-•*]\s*(.+?)(?:\n|$)/g);
-        if (findings) {
-          result.keyFindings = findings.map(f => f.replace(/^[-•*]\s*/, "").trim());
-        }
-      }
-      
-      // Extract methods section
-      const methodsMatch = content.match(/Methodology|Methods[:\s]*(.+?)(?=\n##|\n\*\*|$)/is);
-      if (methodsMatch) {
-        result.methods = methodsMatch[1].trim();
-      }
-      
-      // Extract limitations
-      const limitationsMatch = content.match(/Limitations[:\s]*(.+?)(?=\n##|\n\*\*|$)/is);
-      if (limitationsMatch) {
-        result.limitations = limitationsMatch[1].trim();
-      }
-      
-    } catch (e) {
-      // If parsing fails, just return the raw content as summary
-      if (typeof ztoolkit !== "undefined") {
-        ztoolkit.log("Paper Copilot: Warning: Could not parse structured sections from summary");
-      }
-    }
-    
-    return result;
-  }
-  
-  /**
-   * Quick summary - just the abstract enhanced by LLM
-   */
-  public static async quickSummary(paperInfo: PaperInfo): Promise<string> {
-    if (!paperInfo.abstract && !paperInfo.title) {
-      throw new Error("Paper info is incomplete. Need at least title or abstract.");
-    }
-    
-    if (!LLMAPI.isConfigured()) {
-      throw new Error("LLM API not configured.");
-    }
-    
-    const messages: ChatMessage[] = [
-      {
-        role: "system",
-        content: "You are a helpful academic research assistant. Provide a concise summary of the given paper in 2-3 sentences.",
-      },
-      {
-        role: "user",
-        content: paperInfo.abstract 
-          ? `Summarize this paper:\n\nTitle: ${paperInfo.title || "N/A"}\n\nAbstract: ${paperInfo.abstract}`
-          : `Summarize this paper: ${paperInfo.title}`,
-      },
-    ];
-    
-    const response = await LLMAPI.chat(messages, {
-      temperature: 0.5,
-      maxTokens: 300,
-    });
-    
-    return response.content;
-  }
-  
-  /**
-   * Quick summary with streaming
-   */
-  public static async quickSummaryStream(
-    paperInfo: PaperInfo,
-    callback: StreamSummaryCallback
-  ): Promise<string> {
-    if (!paperInfo.abstract && !paperInfo.title) {
-      throw new Error("Paper info is incomplete. Need at least title or abstract.");
-    }
-    
-    if (!LLMAPI.isConfigured()) {
-      throw new Error("LLM API not configured.");
-    }
-    
-    const messages: ChatMessage[] = [
-      {
-        role: "system",
-        content: "You are a helpful academic research assistant. Provide a concise summary of the given paper in 2-3 sentences.",
-      },
-      {
-        role: "user",
-        content: paperInfo.abstract 
-          ? `Summarize this paper:\n\nTitle: ${paperInfo.title || "N/A"}\n\nAbstract: ${paperInfo.abstract}`
-          : `Summarize this paper: ${paperInfo.title}`,
-      },
-    ];
-    
-    let fullContent = "";
-    
-    await LLMAPI.chat(messages, {
-      stream: (chunk) => {
-        fullContent += chunk;
-        callback(chunk);
-      },
-      temperature: 0.5,
-      maxTokens: 300,
-    });
-    
-    callback.onComplete?.({
-      summary: fullContent,
-      model: LLMAPI.getConfig()?.model || "unknown",
-    });
-    
-    return fullContent;
-  }
+  return result;
 }
 
 /**
- * Initialize summary module
+ * Generate summary with streaming
  */
-export function initSummary(): void {
-  PaperSummary.init();
+export async function generateSummaryStream(
+  paperContent: string,
+  onChunk: (chunk: string, fullContent: string) => void | Promise<void>,
+  options: Partial<SummaryOptions> = {}
+): Promise<{
+  summary: string;
+  keywords?: string[];
+  highlights?: string[];
+}> {
+  const opts = { ...DEFAULT_SUMMARY_OPTIONS, ...options };
+  const messages = buildSummaryPrompt(paperContent, opts);
+  const lengthConfig = getLengthConfig(opts.length);
   
-  if (typeof ztoolkit !== "undefined") {
-    ztoolkit.log("Paper Copilot: Summary module loaded");
+  let fullContent = "";
+  
+  await callLLMWithStream(
+    messages,
+    async (chunk: StreamChunk, content: string) => {
+      fullContent = content;
+      const delta = chunk.choices[0]?.delta?.content || "";
+      if (delta) {
+        await onChunk(delta, fullContent);
+      }
+    },
+    {
+      maxTokens: lengthConfig.maxTokens,
+    }
+  );
+  
+  // Parse response to extract keywords and highlights
+  const result: {
+    summary: string;
+    keywords?: string[];
+    highlights?: string[];
+  } = {
+    summary: fullContent,
+  };
+  
+  // Extract keywords if requested
+  if (opts.includeKeywords) {
+    const keywordsMatch = fullContent.match(/关键词[：:]\s*([^\n]+)/);
+    if (keywordsMatch) {
+      result.keywords = keywordsMatch[1].split(/[,，、]/).map((k) => k.trim()).filter(Boolean);
+    }
+    
+    const keywordsMatchEn = fullContent.match(/Keywords?:\s*([^\n]+)/i);
+    if (keywordsMatchEn && !result.keywords) {
+      result.keywords = keywordsMatchEn[1].split(/[,，、]/).map((k) => k.trim()).filter(Boolean);
+    }
+  }
+  
+  // Extract highlights if requested
+  if (opts.includeHighlights) {
+    const highlightsMatch = fullContent.match(/主要亮点[：:]\s*([^\n]+)/);
+    if (highlightsMatch) {
+      result.highlights = highlightsMatch[1].split(/[,，、]/).map((h) => h.trim()).filter(Boolean);
+    }
+    
+    const highlightsMatchEn = fullContent.match(/Highlights?:\s*([^\n]+)/i);
+    if (highlightsMatchEn && !result.highlights) {
+      result.highlights = highlightsMatchEn[1].split(/[,，、]/).map((h) => h.trim()).filter(Boolean);
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * Generate summary from PDF blocks
+ */
+export async function generateSummaryFromBlocks(
+  blocks: PDFBlock[],
+  options: Partial<SummaryOptions> = {},
+  useStream: boolean = false,
+  onChunk?: (chunk: string, fullContent: string) => void | Promise<void>
+): Promise<{
+  summary: string;
+  keywords?: string[];
+  highlights?: string[];
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+}> {
+  const paperContent = extractPaperContent(blocks);
+  
+  if (!paperContent) {
+    throw new Error("No paper content available for summary");
+  }
+  
+  if (useStream && onChunk) {
+    return generateSummaryStream(paperContent, onChunk, options);
+  }
+  
+  return generateSummary(paperContent, options);
+}
+
+/**
+ * Check if LLM is configured
+ */
+export function isLLMConfigured(): boolean {
+  const config = getLLMConfig();
+  return !!(config.apiKey && config.apiUrl);
+}
+
+/**
+ * Summary Generator class for more complex use cases
+ */
+export class SummaryGenerator {
+  private blocks: PDFBlock[];
+  private options: SummaryOptions;
+  
+  constructor(blocks: PDFBlock[], options: Partial<SummaryOptions> = {}) {
+    this.blocks = blocks;
+    this.options = { ...DEFAULT_SUMMARY_OPTIONS, ...options };
+  }
+  
+  /**
+   * Generate summary
+   */
+  async generate(): Promise<{
+    summary: string;
+    keywords?: string[];
+    highlights?: string[];
+  }> {
+    const paperContent = extractPaperContent(this.blocks);
+    return generateSummary(paperContent, this.options);
+  }
+  
+  /**
+   * Generate summary with streaming
+   */
+  async generateStream(
+    onChunk: (chunk: string, fullContent: string) => void | Promise<void>
+  ): Promise<{
+    summary: string;
+    keywords?: string[];
+    highlights?: string[];
+  }> {
+    const paperContent = extractPaperContent(this.blocks);
+    return generateSummaryStream(paperContent, onChunk, this.options);
+  }
+  
+  /**
+   * Update options
+   */
+  setOptions(options: Partial<SummaryOptions>): void {
+    this.options = { ...this.options, ...options };
+  }
+  
+  /**
+   * Get current options
+   */
+  getOptions(): SummaryOptions {
+    return this.options;
   }
 }
