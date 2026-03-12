@@ -1,5 +1,6 @@
 import { config } from "../../package.json";
 import { getString } from "../utils/locale";
+import { getPref, setPref } from "../utils/prefs";
 
 export async function registerPrefsScripts(_window: Window) {
   // This function is called when the prefs window is opened
@@ -39,6 +40,7 @@ export async function registerPrefsScripts(_window: Window) {
   }
   updatePrefsUI();
   bindPrefEvents();
+  setupEnhancedPrefsUI();
 }
 
 async function updatePrefsUI() {
@@ -128,4 +130,171 @@ function bindPrefEvents() {
         `Successfully changed to ${(e.target as HTMLInputElement).value}!`,
       );
     });
+}
+
+/**
+ * Set up enhanced preferences UI with theme and other options
+ */
+function setupEnhancedPrefsUI() {
+  const doc = addon.data.prefs?.window.document;
+  if (!doc) return;
+
+  // Add enhanced settings section
+  const prefsContainer = doc.querySelector(`#zotero-prefpane-${config.addonRef}-table-container`)?.parentElement;
+  
+  if (prefsContainer) {
+    // Create enhanced settings section
+    const enhancedSection = doc.createElement("div");
+    enhancedSection.id = `${config.addonRef}-enhanced-settings`;
+    enhancedSection.style.cssText = `
+      padding: 16px;
+      margin-top: 16px;
+      background: var(--pc-bg-secondary, #f5f5f5);
+      border-radius: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    `;
+    
+    // Theme settings
+    const themeLabel = doc.createElement("div");
+    themeLabel.style.cssText = `
+      font-weight: 600;
+      margin-bottom: 12px;
+      font-size: 14px;
+      color: var(--pc-text-primary, #333);
+    `;
+    themeLabel.textContent = "🎨 Theme Settings";
+    
+    const themeOptions = doc.createElement("div");
+    themeOptions.style.cssText = `
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    `;
+    
+    const currentTheme = getPref("theme") || "system";
+    
+    // Light theme option
+    const lightBtn = doc.createElement("button");
+    lightBtn.textContent = "☀️ Light";
+    lightBtn.className = `pc-button ${currentTheme === "light" ? "pc-button-primary" : "pc-button-ghost"}`;
+    lightBtn.style.cssText = "flex: 1;";
+    lightBtn.addEventListener("click", () => {
+      setPref("theme", "light");
+      updateThemeButtons(themeOptions, "light");
+    });
+    
+    // Dark theme option
+    const darkBtn = doc.createElement("button");
+    darkBtn.textContent = "🌙 Dark";
+    darkBtn.className = `pc-button ${currentTheme === "dark" ? "pc-button-primary" : "pc-button-ghost"}`;
+    darkBtn.style.cssText = "flex: 1;";
+    darkBtn.addEventListener("click", () => {
+      setPref("theme", "dark");
+      updateThemeButtons(themeOptions, "dark");
+    });
+    
+    // System theme option
+    const systemBtn = doc.createElement("button");
+    systemBtn.textContent = "💻 System";
+    systemBtn.className = `pc-button ${currentTheme === "system" ? "pc-button-primary" : "pc-button-ghost"}`;
+    systemBtn.style.cssText = "flex: 1;";
+    systemBtn.addEventListener("click", () => {
+      setPref("theme", "system");
+      updateThemeButtons(themeOptions, "system");
+    });
+    
+    themeOptions.appendChild(lightBtn);
+    themeOptions.appendChild(darkBtn);
+    themeOptions.appendChild(systemBtn);
+    
+    // Keyboard shortcuts section
+    const shortcutsLabel = doc.createElement("div");
+    shortcutsLabel.style.cssText = `
+      font-weight: 600;
+      margin-bottom: 12px;
+      font-size: 14px;
+      color: var(--pc-text-primary, #333);
+    `;
+    shortcutsLabel.textContent = "⌨️ Keyboard Shortcuts";
+    
+    const shortcutsList = doc.createElement("div");
+    shortcutsList.style.cssText = `
+      background: white;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 13px;
+    `;
+    shortcutsList.innerHTML = `
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span>Toggle Sidebar</span>
+        <span style="background: #eee; padding: 2px 6px; border-radius: 3px; font-family: monospace;">Alt+L</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span>Ask About Selection</span>
+        <span style="background: #eee; padding: 2px 6px; border-radius: 3px; font-family: monospace;">Ctrl+Enter</span>
+      </div>
+      <div style="display: flex; justify-content: space-between;">
+        <span>Close Sidebar</span>
+        <span style="background: #eee; padding: 2px 6px; border-radius: 3px; font-family: monospace;">Escape</span>
+      </div>
+    `;
+    
+    // Reset onboarding button
+    const resetLabel = doc.createElement("div");
+    resetLabel.style.cssText = `
+      font-weight: 600;
+      margin: 16px 0 12px 0;
+      font-size: 14px;
+      color: var(--pc-text-primary, #333);
+    `;
+    resetLabel.textContent = "🔄 Onboarding";
+    
+    const resetBtn = doc.createElement("button");
+    resetBtn.textContent = "Restart Onboarding Tour";
+    resetBtn.className = "pc-button pc-button-ghost";
+    resetBtn.style.cssText = "width: 100%;";
+    resetBtn.addEventListener("click", () => {
+      setPref("onboardingComplete", false);
+      new ztoolkit.ProgressWindow(config.addonName)
+        .createLine({
+          text: "Onboarding has been reset. Reopen the sidebar to start the tour.",
+          type: "success",
+          progress: 100,
+        })
+        .show();
+    });
+    
+    // Assemble
+    enhancedSection.appendChild(themeLabel);
+    enhancedSection.appendChild(themeOptions);
+    enhancedSection.appendChild(shortcutsLabel);
+    enhancedSection.appendChild(shortcutsList);
+    enhancedSection.appendChild(resetLabel);
+    enhancedSection.appendChild(resetBtn);
+    
+    // Insert after the existing content
+    const groupbox = doc.querySelector("groupbox");
+    if (groupbox) {
+      groupbox.appendChild(enhancedSection);
+    }
+  }
+  
+  ztoolkit.log("Enhanced preferences UI initialized");
+}
+
+/**
+ * Update theme button styles
+ */
+function updateThemeButtons(container: HTMLElement, selected: string) {
+  const buttons = container.querySelectorAll("button");
+  buttons.forEach((btn) => {
+    const text = btn.textContent?.toLowerCase() || "";
+    if (text.includes(selected)) {
+      btn.className = "pc-button pc-button-primary";
+      btn.style.flex = "1";
+    } else {
+      btn.className = "pc-button pc-button-ghost";
+      btn.style.flex = "1";
+    }
+  });
 }
