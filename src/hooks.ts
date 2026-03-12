@@ -8,6 +8,7 @@ import {
 import { getString, initLocale } from "./utils/locale";
 import { registerPrefsScripts } from "./modules/preferenceScript";
 import { createZToolkit } from "./utils/ztoolkit";
+import { SidebarUI } from "./modules/sidebar";
 
 async function onStartup() {
   await Promise.all([
@@ -90,16 +91,35 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   });
   popupWin.startCloseTimer(5000);
 
+  // Register Paper Copilot Sidebar
+  SidebarUI.create(win);
+  
+  // Add menu item to toggle sidebar
+  const menuItem = win.document.createElement("menuitem");
+  menuItem.setAttribute("label", "Toggle Paper Copilot");
+  menuItem.setAttribute("id", "paper-copilot-menu-item");
+  menuItem.addEventListener("command", () => {
+    SidebarUI.toggle(win);
+  });
+  
+  // Add to tools menu
+  const toolsMenu = win.document.querySelector('#menu_ToolsPopup');
+  if (toolsMenu) {
+    toolsMenu.appendChild(menuItem);
+  }
+
   addon.hooks.onDialogEvents("dialogExample");
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {
   ztoolkit.unregisterAll();
+  SidebarUI.remove();
   addon.data.dialog?.window?.close();
 }
 
 function onShutdown(): void {
   ztoolkit.unregisterAll();
+  SidebarUI.remove();
   addon.data.dialog?.window?.close();
   // Remove addon object
   addon.data.alive = false;
