@@ -5,7 +5,7 @@
  * Supports OpenAI-compatible APIs
  */
 
-import { Preference } from "zotero-plugin-toolkit";
+import { getPref, setPref } from "../utils/prefs";
 
 export interface LLMMessage {
   role: "system" | "user" | "assistant";
@@ -67,11 +67,11 @@ export interface LLMConfig {
  */
 export function getLLMConfig(): LLMConfig {
   const prefs = {
-    apiUrl: new Preference("apiUrl").get("https://api.minimax.chat/v1/text/chatcompletion_v2"),
-    apiKey: new Preference("apiKey").get(""),
-    model: new Preference("model").get("abab6.5s-chat"),
-    temperature: new Preference("temperature").get(0.7),
-    maxTokens: new Preference("maxTokens").get(4096),
+    apiUrl: getPref("apiUrl") || "https://api.minimax.chat/v1/text/chatcompletion_v2",
+    apiKey: getPref("apiKey") || "",
+    model: getPref("model") || "abab6.5s-chat",
+    temperature: getPref("temperature") ?? 0.7,
+    maxTokens: getPref("maxTokens") ?? 4096,
   };
 
   return prefs;
@@ -82,19 +82,19 @@ export function getLLMConfig(): LLMConfig {
  */
 export function updateLLMConfig(config: Partial<LLMConfig>): void {
   if (config.apiUrl !== undefined) {
-    new Preference("apiUrl").set(config.apiUrl);
+    setPref("apiUrl", config.apiUrl);
   }
   if (config.apiKey !== undefined) {
-    new Preference("apiKey").set(config.apiKey);
+    setPref("apiKey", config.apiKey);
   }
   if (config.model !== undefined) {
-    new Preference("model").set(config.model);
+    setPref("model", config.model);
   }
   if (config.temperature !== undefined) {
-    new Preference("temperature").set(config.temperature);
+    setPref("temperature", config.temperature);
   }
   if (config.maxTokens !== undefined) {
-    new Preference("maxTokens").set(config.maxTokens);
+    setPref("maxTokens", config.maxTokens);
   }
 }
 
@@ -133,7 +133,8 @@ export async function callLLM(
     throw new Error(`LLM API error: ${response.status} - ${errorText}`);
   }
 
-  return response.json();
+  const data = await response.json() as LLMResponse;
+  return data;
 }
 
 /**
@@ -234,7 +235,7 @@ export async function callLLMWithStream(
     fullContent += content;
     
     const result = await onChunk(chunk, fullContent);
-    // Allow callback to control flow
+    // Allow callback to return false to stop streaming
     if (result === false) {
       break;
     }
