@@ -1,33 +1,42 @@
 /**
  * Zotero Paper Copilot - Sidebar UI Module
+ * 
+ * Using native HTML + zotero-plugin-toolkit
+ * Reference: zotero-gpt, zotero-pdf-translate
  */
-
-// ztoolkit is a global variable defined in src/index.ts
 
 export class SidebarUI {
   private static sidebarId = "zotero-paper-copilot-sidebar";
   private static sidebarWidth = 400;
   
+  /**
+   * Create sidebar using ztoolkit.UI
+   */
   public static create(win: Window): void {
     this.remove();
     
-    const sidebar = win.document.createElement("div");
+    const doc = win.document;
+    
+    // Create main container
+    const sidebar = doc.createElement("div");
     sidebar.id = this.sidebarId;
-    sidebar.setAttribute("style", 
+    sidebar.style.cssText = 
       "position: fixed; right: 0; top: 0; width: " + this.sidebarWidth + 
-      "px; height: 100vh; background: #ffffff; box-shadow: -2px 0 10px rgba(0,0,0,0.15); z-index: 9999; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, sans-serif;"
-    );
+      "px; height: 100vh; background: #ffffff; box-shadow: -2px 0 10px rgba(0,0,0,0.15); " +
+      "z-index: 9999; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, sans-serif;";
     
     // Header
-    const header = win.document.createElement("div");
-    header.setAttribute("style", "padding: 16px; border-bottom: 1px solid #e0e0e0; background: #f5f5f5; display: flex; align-items: center; justify-content: space-between;");
+    const header = doc.createElement("div");
+    header.style.cssText = 
+      "padding: 16px; border-bottom: 1px solid #e0e0e0; background: #f5f5f5; " +
+      "display: flex; align-items: center; justify-content: space-between;";
     header.innerHTML = 
       '<div style="font-size: 16px; font-weight: 600; color: #333;">📄 Paper Copilot</div>' +
       '<button id="sidebar-close-btn" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px 8px; color: #666;">×</button>';
     
-    // Content area
-    const content = win.document.createElement("div");
-    content.setAttribute("style", "flex: 1; overflow-y: auto; padding: 16px;");
+    // Content
+    const content = doc.createElement("div");
+    content.style.cssText = "flex: 1; overflow-y: auto; padding: 16px;";
     content.innerHTML = 
       '<div style="text-align: center; padding: 40px 20px; color: #666;">' +
       '<div style="font-size: 48px; margin-bottom: 16px;">🤖</div>' +
@@ -42,36 +51,55 @@ export class SidebarUI {
       '<li>Use translate for instant translations</li>' +
       '</ul></div>';
     
-    // Footer
-    const footer = win.document.createElement("div");
-    footer.setAttribute("style", "padding: 12px 16px; border-top: 1px solid #e0e0e0; background: #f9f9f9;");
+    // Footer with buttons
+    const footer = doc.createElement("div");
+    footer.style.cssText = "padding: 12px 16px; border-top: 1px solid #e0e0e0; background: #f9f9f9;";
     footer.innerHTML = 
       '<div style="display: flex; gap: 8px;">' +
       '<button id="btn-summarize" style="flex: 1; padding: 10px 16px; background: #0066cc; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">📝 Summarize</button>' +
       '<button id="btn-translate" style="flex: 1; padding: 10px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">🌐 Translate</button>' +
       '</div>';
     
+    // Chat area (for future AI conversation)
+    const chatArea = doc.createElement("div");
+    chatArea.id = "paper-copilot-chat-area";
+    chatArea.style.cssText = "flex: 1; overflow-y: auto; padding: 16px; display: none;";
+    chatArea.innerHTML = '<div id="chat-messages" style="display: flex; flex-direction: column; gap: 12px;"></div>';
+    
+    // Assemble
     sidebar.appendChild(header);
     sidebar.appendChild(content);
+    sidebar.appendChild(chatArea);
     sidebar.appendChild(footer);
-    win.document.body.appendChild(sidebar);
+    doc.body.appendChild(sidebar);
     
     // Event listeners
-    win.document.getElementById("sidebar-close-btn")?.addEventListener("click", () => this.remove());
-    win.document.getElementById("btn-summarize")?.addEventListener("click", () => this.showMessage(win, "📝 Generating summary..."));
-    win.document.getElementById("btn-translate")?.addEventListener("click", () => this.showMessage(win, "🌐 Translation feature coming soon!"));
+    doc.getElementById("sidebar-close-btn")?.addEventListener("click", () => this.remove());
+    doc.getElementById("btn-summarize")?.addEventListener("click", () => this.showSummarize(win));
+    doc.getElementById("btn-translate")?.addEventListener("click", () => this.showTranslate(win));
     
-    ztoolkit.log("Paper Copilot sidebar created");
+    // Log
+    if (typeof ztoolkit !== "undefined") {
+      ztoolkit.log("Paper Copilot sidebar created with native HTML");
+    }
   }
   
+  /**
+   * Remove sidebar
+   */
   public static remove(): void {
     const sidebar = document.getElementById(this.sidebarId);
     if (sidebar) {
       sidebar.remove();
-      ztoolkit.log("Paper Copilot sidebar removed");
+      if (typeof ztoolkit !== "undefined") {
+        ztoolkit.log("Paper Copilot sidebar removed");
+      }
     }
   }
   
+  /**
+   * Toggle sidebar
+   */
   public static toggle(win: Window): void {
     const sidebar = document.getElementById(this.sidebarId);
     if (sidebar) {
@@ -81,10 +109,67 @@ export class SidebarUI {
     }
   }
   
-  private static showMessage(win: Window, message: string): void {
+  /**
+   * Show summarize action
+   */
+  private static showSummarize(win: Window): void {
+    this.showMessage(win, "📝 Generating paper summary...<br><br>This feature requires LLM API integration.");
+  }
+  
+  /**
+   * Show translate action
+   */
+  private static showTranslate(win: Window): void {
+    this.showMessage(win, "🌐 Translation feature<br><br>Select text in PDF to translate.");
+  }
+  
+  /**
+   * Show message in content area
+   */
+  private static showMessage(win: Window, html: string): void {
     const content = win.document.querySelector("#" + this.sidebarId + " > div:nth-child(2)");
     if (content) {
-      content.innerHTML = '<div style="padding: 20px; text-align: center; color: #333; font-size: 14px;">' + message + '</div>';
+      (content as HTMLElement).style.display = "block";
+      content.innerHTML = '<div style="padding: 20px; text-align: center; color: #333; font-size: 14px;">' + html + '</div>';
+    }
+    
+    // Hide chat area
+    const chatArea = win.document.getElementById("paper-copilot-chat-area");
+    if (chatArea) {
+      chatArea.style.display = "none";
+    }
+  }
+  
+  /**
+   * Add a message to chat (for future AI conversation)
+   */
+  public static addChatMessage(win: Window, role: "user" | "assistant", content: string): void {
+    const chatArea = win.document.getElementById("paper-copilot-chat-area");
+    const contentArea = win.document.querySelector("#" + this.sidebarId + " > div:nth-child(2)");
+    
+    if (chatArea && contentArea) {
+      // Hide welcome content, show chat
+      (contentArea as HTMLElement).style.display = "none";
+      chatArea.style.display = "block";
+      
+      const messages = win.document.getElementById("chat-messages");
+      if (messages) {
+        const msgDiv = win.document.createElement("div");
+        msgDiv.style.cssText = 
+          "padding: 12px; border-radius: 8px; max-width: 90%; font-size: 14px; line-height: 1.5;";
+        
+        if (role === "user") {
+          msgDiv.style.cssText += "background: #e3f2fd; margin-left: auto;";
+        } else {
+          msgDiv.style.cssText += "background: #f5f5f5; margin-right: auto;";
+        }
+        
+        msgDiv.innerHTML = content;
+        messages.appendChild(msgDiv);
+        
+        // Scroll to bottom
+        chatArea.scrollTop = chatArea.scrollHeight;
+      }
     }
   }
 }
