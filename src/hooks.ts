@@ -58,22 +58,17 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
     `${addon.data.config.addonRef}-mainWindow.ftl`,
   );
 
+  // Show startup progress
   const popupWin = new ztoolkit.ProgressWindow(addon.data.config.addonName, {
     closeOnClick: true,
-    closeTime: -1,
+    closeTime: 3000,
   })
     .createLine({
       text: getString("startup-begin"),
       type: "default",
-      progress: 0,
+      progress: 50,
     })
     .show();
-
-  await Zotero.Promise.delay(1000);
-  popupWin.changeLine({
-    progress: 30,
-    text: `[30%] ${getString("startup-begin")}`,
-  });
 
   UIExampleFactory.registerStyleSheet(win);
 
@@ -89,13 +84,11 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
 
   PromptExampleFactory.registerConditionalCommandExample();
 
-  await Zotero.Promise.delay(1000);
-
   popupWin.changeLine({
     progress: 100,
-    text: `[100%] ${getString("startup-finish")}`,
+    text: getString("startup-finish"),
   });
-  popupWin.startCloseTimer(5000);
+  popupWin.startCloseTimer(3000);
 
   // Register Paper Copilot Sidebar
   SidebarUI.create(win);
@@ -104,7 +97,7 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   ThemeManager.init();
 
   // Register theme stylesheet
-  this.registerThemeStylesheet(win);
+  registerThemeStylesheet(win);
 
   // Initialize PDF text selection listener
   initPDFSelection(win);
