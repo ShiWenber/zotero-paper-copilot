@@ -446,7 +446,7 @@ export class SidebarUI {
       win.document
         .getElementById("btn-ask-about-selection")
         ?.addEventListener("click", () => {
-          this.showMessage(win, "🤖 AI Question feature coming soon!");
+          this.askAIAboutSelection(win, text);
         });
 
       win.document
@@ -525,6 +525,94 @@ export class SidebarUI {
       loadingDiv.style.display = "none";
       outputDiv.innerHTML = `<span style="color: red;">Error: ${(error as Error).message}</span>`;
       resultDiv.style.display = "block";
+    }
+  }
+
+  /**
+   * Ask AI about selected text
+   */
+  private static async askAIAboutSelection(
+    win: Window,
+    text: string,
+  ): Promise<void> {
+    // Check if LLM API is configured
+    if (!LLMAPI.isConfigured()) {
+      // Try to load from prefs
+      LLMAPI.loadFromPrefs();
+      if (!LLMAPI.isConfigured()) {
+        alert(
+          "LLM API not configured. Please configure your API key in Paper Copilot preferences.",
+        );
+        return;
+      }
+    }
+
+    // Create a result area for AI response
+    const content = win.document.querySelector(
+      "#" + this.sidebarId + " > div:nth-child(2)",
+    );
+    if (!content) return;
+
+    // Add loading indicator and result area after the translate button
+    let container = win.document.getElementById("ai-response-container");
+    if (!container) {
+      container = win.document.createElement("div");
+      container.id = "ai-response-container";
+      container.style.cssText = "margin-top: 16px;";
+      content.appendChild(container);
+    }
+
+    container.innerHTML =
+      '<div id="ai-loading" style="text-align: center; padding: 20px; color: #666;">🤔 Thinking...</div>' +
+      '<div id="ai-result" style="display: none;"></div>' +
+      '<div id="ai-error" style="display: none; color: red; padding: 12px; background: #ffebee; border-radius: 6px;"></div>';
+
+    const loadingDiv = win.document.getElementById("ai-loading");
+    const resultDiv = win.document.getElementById("ai-result");
+    const errorDiv = win.document.getElementById("ai-error");
+
+    if (!loadingDiv || !resultDiv || !errorDiv) return;
+
+    try {
+      // Build context with selected text
+      const messages = [
+        {
+          role: "system" as const,
+          content: `You are a helpful academic research assistant. 
+Explain the following text from a scientific paper clearly and accurately.
+Provide context about technical terms if needed.
+Keep your answer concise but informative.`,
+        },
+        {
+          role: "user" as const,
+          content: `Please explain or answer questions about this text:\n\n"${text}"`,
+        },
+      ];
+
+      let fullResponse = "";
+
+      await LLMAPI.chat(messages, {
+        stream: {
+          onChunk: (chunk: string) => {
+            fullResponse += chunk;
+            loadingDiv.textContent = "🤔 " + fullResponse.substring(0, 50) + (fullResponse.length > 50 ? "..." : "");
+          },
+          onComplete: (fullContent: string) => {
+            loadingDiv.style.display = "none";
+            resultDiv.style.display = "block";
+            resultDiv.innerHTML = `<div style="background: #e8f5e9; padding: 12px; border-radius: 6px; font-size: 14px; line-height: 1.6;">${fullResponse.replace(/\n/g, "<br>")}</div>`;
+          },
+          onError: (error: Error) => {
+            loadingDiv.style.display = "none";
+            errorDiv.style.display = "block";
+            errorDiv.textContent = `Error: ${error.message}`;
+          },
+        },
+      });
+    } catch (error) {
+      loadingDiv.style.display = "none";
+      errorDiv.style.display = "block";
+      errorDiv.textContent = `Error: ${(error as Error).message}`;
     }
   }
 
