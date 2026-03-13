@@ -1,7 +1,7 @@
 {
   "name": "zotero-paper-copilot",
   "type": "module",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "AI Assistant for Research Papers - Moonlight-like plugin for Zotero",
   "config": {
     "addonName": "Zotero Paper Copilot",
