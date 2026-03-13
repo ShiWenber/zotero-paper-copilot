@@ -13,6 +13,8 @@ import { initPDFSelection } from "./modules/pdf-selection";
 import { initPDFParsing } from "./modules/pdf-parsing";
 import { initTranslationAPI } from "./modules/translation";
 import { initSemanticScholarAPI } from "./modules/semantic-scholar";
+import { ThemeManager } from "./modules/theme";
+import { config } from "../package.json";
 
 async function onStartup() {
   await Promise.all([
@@ -98,6 +100,12 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   // Register Paper Copilot Sidebar
   SidebarUI.create(win);
 
+  // Initialize theme manager
+  ThemeManager.init();
+
+  // Register theme stylesheet
+  this.registerThemeStylesheet(win);
+
   // Initialize PDF text selection listener
   initPDFSelection(win);
 
@@ -125,6 +133,34 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   }
 
   addon.hooks.onDialogEvents("dialogExample");
+}
+
+/**
+ * Register theme stylesheet
+ */
+function registerThemeStylesheet(win: _ZoteroTypes.MainWindow): void {
+  const doc = win.document;
+  const styleId = "pc-theme-css";
+
+  // Check if already loaded
+  if (doc.getElementById(styleId)) {
+    return;
+  }
+
+  // Create link element for theme CSS
+  const styles = ztoolkit.UI.createElement(doc, "link", {
+    id: styleId,
+    properties: {
+      type: "text/css",
+      rel: "stylesheet",
+      href: `chrome://${config.addonRef}/content/styles/theme.css`,
+    },
+  });
+  doc.documentElement?.appendChild(styles);
+
+  if (typeof ztoolkit !== "undefined") {
+    ztoolkit.log("Paper Copilot: Theme stylesheet registered");
+  }
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {

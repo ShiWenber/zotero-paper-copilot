@@ -9,12 +9,15 @@ import { TranslationAPI, SUPPORTED_LANGUAGES } from "./translation";
 import { LLMAPI } from "./llm-api";
 import { SemanticScholarAPI, SemanticScholarPaper } from "./semantic-scholar";
 import { KnowledgeBase, CollectionDocument } from "./knowledge-base";
+import { ThemeManager } from "./theme";
+import { OnboardingManager, ErrorFormatter } from "./onboarding";
 
 export class SidebarUI {
   private static sidebarId = "zotero-paper-copilot-sidebar";
   private static sidebarWidth = 400;
   private static currentSelectedText = "";
   private static currentTargetLanguage = "ZH";
+  private static isAnimating = false;
   /**
    * Create sidebar using ztoolkit.UI
    */
