@@ -1,6 +1,6 @@
 /**
  * Zotero Paper Copilot - PDF Parsing Module
- * 
+ *
  * PDF page structure parsing: identifies page numbers, chapter titles, paragraph structure
  * Uses Zotero Reader API and PDF.js text layer
  */
@@ -9,7 +9,15 @@ import { PDFSelection } from "./pdf-selection";
 
 export interface PDFBlock {
   id: string;
-  type: "title" | "heading" | "subheading" | "paragraph" | "figure" | "table" | "page-number" | "other";
+  type:
+    | "title"
+    | "heading"
+    | "subheading"
+    | "paragraph"
+    | "figure"
+    | "table"
+    | "page-number"
+    | "other";
   level: number; // 0 for body text, 1-6 for headings
   text: string;
   page: number;
@@ -41,7 +49,7 @@ export interface PDFMetadata {
 
 export class PDFParsing {
   private static initialized = false;
-  
+
   /**
    * Initialize PDF parsing
    */
@@ -49,14 +57,14 @@ export class PDFParsing {
     if (this.initialized) {
       return;
     }
-    
+
     this.initialized = true;
-    
+
     if (typeof ztoolkit !== "undefined") {
       ztoolkit.log("Paper Copilot: PDF parsing module initialized");
     }
   }
-  
+
   /**
    * Get current PDF reader instance
    */
@@ -76,7 +84,7 @@ export class PDFParsing {
     }
     return null;
   }
-  
+
   /**
    * Get current item from reader
    */
@@ -89,7 +97,7 @@ export class PDFParsing {
         // Ignore
       }
     }
-    
+
     // Fallback to ZoteroPane
     try {
       const pane = win.Zotero.getActiveZoteroPane?.();
@@ -106,7 +114,7 @@ export class PDFParsing {
     }
     return null;
   }
-  
+
   /**
    * Parse PDF structure from current document
    */
@@ -119,7 +127,7 @@ export class PDFParsing {
         parseTime: new Date().toISOString(),
       },
     };
-    
+
     try {
       const reader = this.getReader(win);
       if (!reader) {
@@ -128,43 +136,44 @@ export class PDFParsing {
         }
         return structure;
       }
-      
+
       // Get total pages
       const numPages = await reader._numPages;
       structure.metadata.totalPages = numPages;
-      
+
       // Get item metadata
       const item = await this.getCurrentItem(win);
       if (item) {
         structure.metadata.title = item.getField?.("title");
-        structure.metadata.authors = item.getField?.("creators")?.map?.((c: any) => c.firstName + " " + c.lastName);
+        structure.metadata.authors = item
+          .getField?.("creators")
+          ?.map?.((c: any) => c.firstName + " " + c.lastName);
       }
-      
+
       // Get TOC from reader
       structure.toc = await this.extractTOC(reader);
-      
+
       // Parse pages (limit to first 50 pages for performance)
       const pagesToParse = Math.min(numPages, 50);
       for (let i = 1; i <= pagesToParse; i++) {
         const pageBlocks = await this.parsePage(win, reader, i);
         structure.blocks.push(...pageBlocks);
       }
-      
     } catch (e) {
       if (typeof ztoolkit !== "undefined") {
         ztoolkit.log("Paper Copilot: Error parsing document:", e);
       }
     }
-    
+
     return structure;
   }
-  
+
   /**
    * Extract Table of Contents from reader
    */
   private static async extractTOC(reader: any): Promise<TOCItem[]> {
     const toc: TOCItem[] = [];
-    
+
     try {
       if (reader._toc) {
         const tocData = await reader._toc;
@@ -181,36 +190,40 @@ export class PDFParsing {
         ztoolkit.log("Paper Copilot: Error extracting TOC:", e);
       }
     }
-    
+
     return toc;
   }
-  
+
   /**
    * Parse a single page to extract blocks
    */
-  private static async parsePage(win: Window, reader: any, pageNum: number): Promise<PDFBlock[]> {
+  private static async parsePage(
+    win: Window,
+    reader: any,
+    pageNum: number,
+  ): Promise<PDFBlock[]> {
     const blocks: PDFBlock[] = [];
-    
+
     try {
       // Get page text content via PDF.js
       const page = await this.getPageText(win, pageNum);
       if (!page) {
         return blocks;
       }
-      
+
       // Analyze text items to identify structure
       const items = page.items || [];
       let currentParagraph = "";
       let lastFontSize = 0;
       let lastIndent = 0;
-      
+
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         if (!item.str) continue;
-        
+
         const fontSize = item.height || 10;
         const indent = item.transform?.[4] || 0; // x position
-        
+
         // Detect page number (small text at bottom)
         if (this.isPageNumber(item.str, fontSize, i, items.length)) {
           blocks.push({
@@ -223,19 +236,26 @@ export class PDFParsing {
           });
           continue;
         }
-        
+
         // Detect headings (larger font or all caps)
-        if (this.isHeading(item.str, fontSize, lastFontSize, indent, lastIndent)) {
+        if (
+          this.isHeading(item.str, fontSize, lastFontSize, indent, lastIndent)
+        ) {
           // Save previous paragraph
           if (currentParagraph) {
             blocks.push(this.createParagraphBlock(currentParagraph, pageNum));
             currentParagraph = "";
           }
-          
+
           const headingLevel = this.getHeadingLevel(fontSize, lastFontSize);
           blocks.push({
             id: `p${pageNum}-h${blocks.length}`,
-            type: headingLevel === 1 ? "title" : headingLevel <= 3 ? "heading" : "subheading",
+            type:
+              headingLevel === 1
+                ? "title"
+                : headingLevel <= 3
+                  ? "heading"
+                  : "subheading",
             level: headingLevel,
             text: item.str.trim(),
             page: pageNum,
@@ -246,25 +266,24 @@ export class PDFParsing {
           // Add to paragraph
           currentParagraph += item.str;
         }
-        
+
         lastFontSize = fontSize;
         lastIndent = indent;
       }
-      
+
       // Save remaining paragraph
       if (currentParagraph) {
         blocks.push(this.createParagraphBlock(currentParagraph, pageNum));
       }
-      
     } catch (e) {
       if (typeof ztoolkit !== "undefined") {
         ztoolkit.log("Paper Copilot: Error parsing page " + pageNum + ":", e);
       }
     }
-    
+
     return blocks;
   }
-  
+
   /**
    * Get page text content via PDF.js
    */
@@ -274,7 +293,7 @@ export class PDFParsing {
       if (!reader?._pdfDocument) {
         return null;
       }
-      
+
       const page = await reader._pdfDocument.getPage(pageNum);
       const textContent = await page.getTextContent();
       return textContent;
@@ -282,11 +301,16 @@ export class PDFParsing {
       return null;
     }
   }
-  
+
   /**
    * Detect if text is a page number
    */
-  private static isPageNumber(text: string, fontSize: number, index: number, total: number): boolean {
+  private static isPageNumber(
+    text: string,
+    fontSize: number,
+    index: number,
+    total: number,
+  ): boolean {
     const trimmed = text.trim();
     // Page numbers are usually short and numeric
     if (!/^\d+[\da-z]?$/.test(trimmed)) {
@@ -302,15 +326,24 @@ export class PDFParsing {
     }
     return false;
   }
-  
+
   /**
    * Detect if text is a heading
    */
-  private static isHeading(text: string, fontSize: number, lastFontSize: number, indent: number, lastIndent: number): boolean {
+  private static isHeading(
+    text: string,
+    fontSize: number,
+    lastFontSize: number,
+    indent: number,
+    lastIndent: number,
+  ): boolean {
     const trimmed = text.trim();
-    
+
     // All caps or Title Case often indicates heading
-    if (trimmed.length < 50 && (trimmed === trimmed.toUpperCase() || /^[A-Z]/.test(trimmed))) {
+    if (
+      trimmed.length < 50 &&
+      (trimmed === trimmed.toUpperCase() || /^[A-Z]/.test(trimmed))
+    ) {
       // Significantly larger than previous text
       if (fontSize > lastFontSize * 1.2 && lastFontSize > 0) {
         return true;
@@ -320,7 +353,7 @@ export class PDFParsing {
         return true;
       }
     }
-    
+
     // Common heading patterns
     const headingPatterns = [
       /^Abstract$/i,
@@ -337,32 +370,35 @@ export class PDFParsing {
       /^Figure \d+/i,
       /^Table \d+/i,
     ];
-    
+
     for (const pattern of headingPatterns) {
       if (pattern.test(trimmed)) {
         return true;
       }
     }
-    
+
     return false;
   }
-  
+
   /**
    * Get heading level based on font size
    */
-  private static getHeadingLevel(fontSize: number, lastFontSize: number): number {
+  private static getHeadingLevel(
+    fontSize: number,
+    lastFontSize: number,
+  ): number {
     if (lastFontSize === 0) {
       return 1; // First text is likely title
     }
-    
+
     const ratio = fontSize / lastFontSize;
-    
+
     if (ratio > 1.5) return 1;
     if (ratio > 1.3) return 2;
     if (ratio > 1.1) return 3;
     return 4;
   }
-  
+
   /**
    * Create a paragraph block
    */
@@ -375,23 +411,27 @@ export class PDFParsing {
       page: pageNum,
     };
   }
-  
+
   /**
    * Get blocks by type
    */
-  public static filterBlocks(blocks: PDFBlock[], type: PDFBlock["type"]): PDFBlock[] {
+  public static filterBlocks(
+    blocks: PDFBlock[],
+    type: PDFBlock["type"],
+  ): PDFBlock[] {
     return blocks.filter((b) => b.type === type);
   }
-  
+
   /**
    * Get all headings
    */
   public static getHeadings(blocks: PDFBlock[]): PDFBlock[] {
-    return blocks.filter((b) => 
-      b.type === "title" || b.type === "heading" || b.type === "subheading"
+    return blocks.filter(
+      (b) =>
+        b.type === "title" || b.type === "heading" || b.type === "subheading",
     );
   }
-  
+
   /**
    * Search blocks by keyword
    */

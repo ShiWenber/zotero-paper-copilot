@@ -1,6 +1,6 @@
 /**
  * Zotero Paper Copilot - Chat UI Module
- * 
+ *
  * Provides interactive Q&A functionality for selected blocks
  * Integrates with LLM API and streaming UI
  */
@@ -21,7 +21,7 @@ export interface ChatContext {
 export class ChatUI {
   private static chatHistory: ChatMessage[] = [];
   private static maxHistory = 20;
-  
+
   /**
    * Initialize chat UI
    */
@@ -30,29 +30,30 @@ export class ChatUI {
     this.chatHistory = [
       {
         role: "system",
-        content: "You are a helpful academic research assistant. Answer questions about the selected text from scientific papers.",
+        content:
+          "You are a helpful academic research assistant. Answer questions about the selected text from scientific papers.",
       },
     ];
-    
+
     if (typeof ztoolkit !== "undefined") {
       ztoolkit.log("Paper Copilot: Chat UI initialized");
     }
   }
-  
+
   /**
    * Handle selected text and start Q&A
    */
   public static async handleSelectedText(
     win: Window,
     text: string,
-    context?: ChatContext
+    context?: ChatContext,
   ): Promise<void> {
     // Add user message
     StreamingUI.addUserMessage(win, text);
-    
+
     // Build messages with context
     const messages = this.buildMessages(text, context);
-    
+
     // Send to LLM with streaming
     try {
       await StreamingUI.sendMessage(win, messages, {
@@ -76,17 +77,17 @@ export class ChatUI {
       }
     }
   }
-  
+
   /**
    * Handle figure/block click Q&A
    */
   public static async handleBlockClick(
     win: Window,
     block: PDFBlock | FigureBlock,
-    context?: ChatContext
+    context?: ChatContext,
   ): Promise<void> {
-    let prompt = "";
-    
+    let prompt: string;
+
     if ("type" in block && block.type === "figure") {
       prompt = `Please explain this figure: ${block.label}`;
       if (block.caption) {
@@ -100,43 +101,43 @@ export class ChatUI {
     } else {
       prompt = block.text.substring(0, 1000);
     }
-    
+
     await this.handleSelectedText(win, prompt, {
       ...context,
       selectedBlock: block,
     });
   }
-  
+
   /**
    * Send free-form question about selected content
    */
   public static async sendQuestion(
     win: Window,
     question: string,
-    context?: ChatContext
+    context?: ChatContext,
   ): Promise<void> {
     // Add user question
     StreamingUI.addUserMessage(win, question);
-    
+
     // Build context-aware messages
     let userContent = question;
-    
+
     if (context?.selectedText) {
       userContent = `Question: ${question}\n\nSelected text from paper:\n${context.selectedText}`;
     }
-    
+
     if (context?.paperTitle) {
       userContent += `\n\nPaper: ${context.paperTitle}`;
     }
     if (context?.paperAuthors) {
       userContent += `\nAuthors: ${context.paperAuthors.join(", ")}`;
     }
-    
+
     const messages = [
       ...this.chatHistory,
       { role: "user", content: userContent },
     ];
-    
+
     try {
       await StreamingUI.sendMessage(win, messages, {
         onComplete: (fullContent) => {
@@ -150,15 +151,18 @@ export class ChatUI {
       }
     }
   }
-  
+
   /**
    * Build messages with context
    */
-  private static buildMessages(text: string, context?: ChatContext): ChatMessage[] {
+  private static buildMessages(
+    text: string,
+    context?: ChatContext,
+  ): ChatMessage[] {
     const messages: ChatMessage[] = [...this.chatHistory];
-    
+
     let userContent = "";
-    
+
     // Add context info
     if (context?.paperTitle) {
       userContent += `Paper: ${context.paperTitle}\n`;
@@ -169,20 +173,20 @@ export class ChatUI {
     if (context?.pageNumber) {
       userContent += `Current page: ${context.pageNumber}\n`;
     }
-    
+
     userContent += `\nSelected text:\n${text}\n\nPlease answer any questions about this content.`;
-    
+
     messages.push({ role: "user", content: userContent });
-    
+
     return messages;
   }
-  
+
   /**
    * Add message to history
    */
   private static addToHistory(message: ChatMessage): void {
     this.chatHistory.push(message);
-    
+
     // Trim history if too long
     if (this.chatHistory.length > this.maxHistory + 1) {
       // Keep system message
@@ -191,7 +195,7 @@ export class ChatUI {
       this.chatHistory = [system, ...rest.slice(-this.maxHistory)];
     }
   }
-  
+
   /**
    * Clear chat history
    */
@@ -199,50 +203,54 @@ export class ChatUI {
     this.chatHistory = [
       {
         role: "system",
-        content: "You are a helpful academic research assistant. Answer questions about the selected text from scientific papers.",
+        content:
+          "You are a helpful academic research assistant. Answer questions about the selected text from scientific papers.",
       },
     ];
   }
-  
+
   /**
    * Get chat history
    */
   public static getHistory(): ChatMessage[] {
     return [...this.chatHistory];
   }
-  
+
   /**
    * Generate quick action questions for selected text
    */
   public static getQuickActions(text: string): string[] {
     const actions: string[] = [];
-    
+
     // Analyze text length and type
     const isShort = text.length < 200;
     const isLong = text.length > 500;
-    
+
     // Always available
     actions.push("Explain this text");
     actions.push("Summarize this");
-    
-    if (text.toLowerCase().includes("figure") || text.toLowerCase().includes("fig.")) {
+
+    if (
+      text.toLowerCase().includes("figure") ||
+      text.toLowerCase().includes("fig.")
+    ) {
       actions.push("Describe this figure");
     }
-    
+
     if (text.toLowerCase().includes("table")) {
       actions.push("Explain this table");
     }
-    
+
     if (isLong) {
       actions.push("What are the key points?");
     }
-    
+
     actions.push("Translate to Chinese");
     actions.push("Tell me more");
-    
+
     return actions;
   }
-  
+
   /**
    * Create chat input UI
    */
@@ -262,11 +270,15 @@ export class ChatUI {
         </button>
       </div>
     `;
-    
+
     // Add event listeners
-    const textarea = inputContainer.querySelector(".paper-copilot-input") as HTMLTextAreaElement;
-    const sendBtn = inputContainer.querySelector(".paper-copilot-send-btn") as HTMLButtonElement;
-    
+    const textarea = inputContainer.querySelector(
+      ".paper-copilot-input",
+    ) as HTMLTextAreaElement;
+    const sendBtn = inputContainer.querySelector(
+      ".paper-copilot-send-btn",
+    ) as HTMLButtonElement;
+
     const sendMessage = () => {
       const question = textarea.value.trim();
       if (question) {
@@ -274,7 +286,7 @@ export class ChatUI {
         textarea.value = "";
       }
     };
-    
+
     sendBtn?.addEventListener("click", sendMessage);
     textarea?.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -282,25 +294,25 @@ export class ChatUI {
         sendMessage();
       }
     });
-    
+
     container.appendChild(inputContainer);
   }
-  
+
   /**
    * Update quick actions
    */
   public static updateQuickActions(win: Window, text: string): void {
     const quickActions = win.document.querySelector(".quick-actions");
     if (!quickActions) return;
-    
+
     const actions = this.getQuickActions(text);
     quickActions.innerHTML = actions
       .map(
         (action) =>
-          `<button class="quick-action-btn" data-action="${this.escapeHtml(action)}">${this.escapeHtml(action)}</button>`
+          `<button class="quick-action-btn" data-action="${this.escapeHtml(action)}">${this.escapeHtml(action)}</button>`,
       )
       .join("");
-    
+
     // Add click handlers
     quickActions.querySelectorAll(".quick-action-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -311,7 +323,7 @@ export class ChatUI {
       });
     });
   }
-  
+
   /**
    * Escape HTML
    */
@@ -408,7 +420,7 @@ export function getChatUIStyles(): string {
  */
 export function initChatUI(win: Window): void {
   ChatUI.init(win);
-  
+
   // Add styles
   const styleId = "paper-copilot-chat-ui-styles";
   if (!win.document.getElementById(styleId)) {

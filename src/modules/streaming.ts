@@ -1,6 +1,6 @@
 /**
  * Zotero Paper Copilot - Streaming UI Module
- * 
+ *
  * Provides streaming response UI similar to ChatGPT
  * Integrates with sidebar for real-time text display
  */
@@ -18,7 +18,7 @@ export interface ChatMessageUI {
 export class StreamingUI {
   private static messageQueue: Map<string, ChatMessageUI> = new Map();
   private static currentStreamId: string | null = null;
-  
+
   /**
    * Initialize streaming UI
    */
@@ -27,22 +27,22 @@ export class StreamingUI {
       ztoolkit.log("Paper Copilot: Streaming UI initialized");
     }
   }
-  
+
   /**
    * Send a message and get streaming response
    */
   public static async sendMessage(
     win: Window,
     messages: ChatMessage[],
-    options?: { 
+    options?: {
       onChunk?: (chunk: string) => void;
       onComplete?: (fullContent: string) => void;
       onError?: (error: Error) => void;
-    }
+    },
   ): Promise<string> {
     const messageId = this.generateId();
     this.currentStreamId = messageId;
-    
+
     // Create placeholder message
     const assistantMessage: ChatMessageUI = {
       id: messageId,
@@ -51,12 +51,12 @@ export class StreamingUI {
       isStreaming: true,
       timestamp: new Date(),
     };
-    
+
     this.messageQueue.set(messageId, assistantMessage);
-    
+
     // Display placeholder in UI
     this.displayStreamingMessage(win, assistantMessage);
-    
+
     try {
       const response = await LLMAPI.streamChat(
         messages,
@@ -90,9 +90,9 @@ export class StreamingUI {
             }
             this.currentStreamId = null;
           },
-        }
+        },
       );
-      
+
       return response.content;
     } catch (error) {
       this.showError(win, messageId, (error as Error).message);
@@ -100,17 +100,21 @@ export class StreamingUI {
       throw error;
     }
   }
-  
+
   /**
    * Display streaming message placeholder
    */
-  private static displayStreamingMessage(win: Window, message: ChatMessageUI): void {
+  private static displayStreamingMessage(
+    win: Window,
+    message: ChatMessageUI,
+  ): void {
     const chatArea = win.document.getElementById("paper-copilot-chat-messages");
     if (!chatArea) return;
-    
+
     const messageEl = win.document.createElement("div");
     messageEl.id = `message-${message.id}`;
-    messageEl.className = "paper-copilot-message paper-copilot-message-assistant";
+    messageEl.className =
+      "paper-copilot-message paper-copilot-message-assistant";
     messageEl.innerHTML = `
       <div class="message-avatar">🤖</div>
       <div class="message-content">
@@ -121,73 +125,81 @@ export class StreamingUI {
         </div>
       </div>
     `;
-    
+
     chatArea.appendChild(messageEl);
     chatArea.scrollTop = chatArea.scrollHeight;
   }
-  
+
   /**
    * Update streaming content
    */
-  private static updateStreamingContent(win: Window, messageId: string, content: string): void {
+  private static updateStreamingContent(
+    win: Window,
+    messageId: string,
+    content: string,
+  ): void {
     const messageEl = win.document.getElementById(`message-${messageId}`);
     if (!messageEl) return;
-    
+
     const textEl = messageEl.querySelector(".message-text");
     if (textEl) {
       // Escape HTML
       const escaped = this.escapeHtml(content);
       textEl.innerHTML = escaped;
     }
-    
+
     // Scroll to bottom
     const chatArea = win.document.getElementById("paper-copilot-chat-messages");
     if (chatArea) {
       chatArea.scrollTop = chatArea.scrollHeight;
     }
   }
-  
+
   /**
    * Finish streaming
    */
   private static finishStreaming(win: Window, messageId: string): void {
     const messageEl = win.document.getElementById(`message-${messageId}`);
     if (!messageEl) return;
-    
+
     const textEl = messageEl.querySelector(".message-text");
     if (textEl) {
       textEl.classList.remove("streaming");
     }
-    
+
     const indicator = messageEl.querySelector(".typing-indicator");
     if (indicator) {
       indicator.remove();
     }
   }
-  
+
   /**
    * Show error
    */
-  private static showError(win: Window, messageId: string, error: string): void {
+  private static showError(
+    win: Window,
+    messageId: string,
+    error: string,
+  ): void {
     const messageEl = win.document.getElementById(`message-${messageId}`);
     if (!messageEl) return;
-    
+
     const textEl = messageEl.querySelector(".message-text");
     if (textEl) {
       textEl.classList.remove("streaming");
       textEl.innerHTML = `<span class="error">${this.escapeHtml(error)}</span>`;
     }
   }
-  
+
   /**
    * Add user message to chat
    */
   public static addUserMessage(win: Window, content: string): string {
     const messageId = this.generateId();
-    
+
     const chatArea = win.document.getElementById("paper-copilot-chat-messages");
     if (!chatArea) return messageId;
-    
+
     const messageEl = win.document.createElement("div");
     messageEl.id = `message-${messageId}`;
     messageEl.className = "paper-copilot-message paper-copilot-message-user";
@@ -197,13 +209,13 @@ export class StreamingUI {
         <div class="message-text">${this.escapeHtml(content)}</div>
       </div>
     `;
-    
+
     chatArea.appendChild(messageEl);
     chatArea.scrollTop = chatArea.scrollHeight;
-    
+
     return messageId;
   }
-  
+
   /**
    * Clear all messages
    */
@@ -215,14 +227,14 @@ export class StreamingUI {
     this.messageQueue.clear();
     this.currentStreamId = null;
   }
-  
+
   /**
    * Check if currently streaming
    */
   public static isStreaming(): boolean {
     return this.currentStreamId !== null;
   }
-  
+
   /**
    * Stop current stream (not implemented for HTTP streaming)
    */
@@ -230,17 +242,21 @@ export class StreamingUI {
     // Note: HTTP streaming doesn't support easy cancellation
     // This is a placeholder for future implementation
     if (typeof ztoolkit !== "undefined") {
-      ztoolkit.log("Paper Copilot: Stop stream requested (not implemented for HTTP)");
+      ztoolkit.log(
+        "Paper Copilot: Stop stream requested (not implemented for HTTP)",
+      );
     }
   }
-  
+
   /**
    * Generate unique ID
    */
   private static generateId(): string {
-    return "msg_" + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+    return (
+      "msg_" + Math.random().toString(36).substr(2, 9) + Date.now().toString(36)
+    );
   }
-  
+
   /**
    * Escape HTML
    */
@@ -371,7 +387,7 @@ export function getStreamingStyles(): string {
  */
 export function initStreamingUI(win: Window): void {
   StreamingUI.init(win);
-  
+
   // Add styles
   const styleId = "paper-copilot-streaming-styles";
   if (!win.document.getElementById(styleId)) {

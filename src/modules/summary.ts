@@ -1,15 +1,29 @@
 /**
  * Zotero Paper Copilot - Summary Module
- * 
+ *
  * Generates paper abstracts using LLM API
  * Supports streaming output and custom summary length
  */
 
-import { callLLM, callLLMWithStream, LLMMessage, getLLMConfig, StreamChunk } from "./llm-api";
+import {
+  callLLM,
+  callLLMWithStream,
+  LLMMessage,
+  getLLMConfig,
+  StreamChunk,
+} from "./llm-api";
 
 export interface PDFBlock {
   id: string;
-  type: "title" | "heading" | "subheading" | "paragraph" | "figure" | "table" | "page-number" | "other";
+  type:
+    | "title"
+    | "heading"
+    | "subheading"
+    | "paragraph"
+    | "figure"
+    | "table"
+    | "page-number"
+    | "other";
   level: number;
   text: string;
   page: number;
@@ -55,7 +69,8 @@ function getLengthConfig(length: SummaryLength): {
     case "long":
       return {
         maxTokens: 1000,
-        promptSuffix: "请用500-800字详细概括论文的主要内容、研究背景、方法、实验结果和贡献。",
+        promptSuffix:
+          "请用500-800字详细概括论文的主要内容、研究背景、方法、实验结果和贡献。",
       };
   }
 }
@@ -79,27 +94,28 @@ function getLanguagePrompt(language: "en" | "zh" | "auto"): string {
  */
 function buildSummaryPrompt(
   paperContent: string,
-  options: SummaryOptions
+  options: SummaryOptions,
 ): LLMMessage[] {
   const lengthConfig = getLengthConfig(options.length);
   const languagePrompt = getLanguagePrompt(options.language || "auto");
-  
+
   let prompt = `请阅读以下论文内容，然后生成摘要。\n\n${lengthConfig.promptSuffix}${languagePrompt}\n\n`;
-  
+
   if (options.includeKeywords) {
     prompt += "请同时列出3-5个关键词。\n";
   }
-  
+
   if (options.includeHighlights) {
     prompt += "请列出2-3个论文的主要亮点或贡献。\n";
   }
-  
+
   prompt += `\n论文内容：\n${paperContent}`;
-  
+
   return [
     {
       role: "system",
-      content: "你是一个学术论文助手，擅长阅读和总结科研论文。你的摘要应该准确、简洁、客观。",
+      content:
+        "你是一个学术论文助手，擅长阅读和总结科研论文。你的摘要应该准确、简洁、客观。",
     },
     {
       role: "user",
@@ -113,13 +129,17 @@ function buildSummaryPrompt(
  */
 export function extractPaperContent(
   blocks: PDFBlock[],
-  maxChars: number = 8000
+  maxChars: number = 8000,
 ): string {
   // Get all paragraphs and headings
   const relevantBlocks = blocks.filter(
-    (b) => b.type === "paragraph" || b.type === "heading" || b.type === "subheading" || b.type === "title"
+    (b) =>
+      b.type === "paragraph" ||
+      b.type === "heading" ||
+      b.type === "subheading" ||
+      b.type === "title",
   );
-  
+
   let content = "";
   for (const block of relevantBlocks) {
     if (content.length + block.text.length > maxChars) {
@@ -128,7 +148,7 @@ export function extractPaperContent(
     }
     content += block.text + "\n\n";
   }
-  
+
   return content.trim();
 }
 
@@ -137,7 +157,7 @@ export function extractPaperContent(
  */
 export async function generateSummary(
   paperContent: string,
-  options: Partial<SummaryOptions> = {}
+  options: Partial<SummaryOptions> = {},
 ): Promise<{
   summary: string;
   keywords?: string[];
@@ -151,13 +171,13 @@ export async function generateSummary(
   const opts = { ...DEFAULT_SUMMARY_OPTIONS, ...options };
   const messages = buildSummaryPrompt(paperContent, opts);
   const lengthConfig = getLengthConfig(opts.length);
-  
+
   const response = await callLLM(messages, {
     maxTokens: lengthConfig.maxTokens,
   });
-  
+
   const content = response.choices[0]?.message?.content || "";
-  
+
   // Parse response to extract keywords and highlights
   const result: {
     summary: string;
@@ -171,33 +191,45 @@ export async function generateSummary(
   } = {
     summary: content,
   };
-  
+
   // Extract keywords if requested
   if (opts.includeKeywords) {
     const keywordsMatch = content.match(/关键词[：:]\s*([^\n]+)/);
     if (keywordsMatch) {
-      result.keywords = keywordsMatch[1].split(/[,，、]/).map((k) => k.trim()).filter(Boolean);
+      result.keywords = keywordsMatch[1]
+        .split(/[,，、]/)
+        .map((k) => k.trim())
+        .filter(Boolean);
     }
-    
+
     const keywordsMatchEn = content.match(/Keywords?:\s*([^\n]+)/i);
     if (keywordsMatchEn && !result.keywords) {
-      result.keywords = keywordsMatchEn[1].split(/[,，、]/).map((k) => k.trim()).filter(Boolean);
+      result.keywords = keywordsMatchEn[1]
+        .split(/[,，、]/)
+        .map((k) => k.trim())
+        .filter(Boolean);
     }
   }
-  
+
   // Extract highlights if requested
   if (opts.includeHighlights) {
     const highlightsMatch = content.match(/主要亮点[：:]\s*([^\n]+)/);
     if (highlightsMatch) {
-      result.highlights = highlightsMatch[1].split(/[,，、]/).map((h) => h.trim()).filter(Boolean);
+      result.highlights = highlightsMatch[1]
+        .split(/[,，、]/)
+        .map((h) => h.trim())
+        .filter(Boolean);
     }
-    
+
     const highlightsMatchEn = content.match(/Highlights?:\s*([^\n]+)/i);
     if (highlightsMatchEn && !result.highlights) {
-      result.highlights = highlightsMatchEn[1].split(/[,，、]/).map((h) => h.trim()).filter(Boolean);
+      result.highlights = highlightsMatchEn[1]
+        .split(/[,，、]/)
+        .map((h) => h.trim())
+        .filter(Boolean);
     }
   }
-  
+
   if (response.usage) {
     result.usage = {
       promptTokens: response.usage.prompt_tokens,
@@ -205,7 +237,7 @@ export async function generateSummary(
       totalTokens: response.usage.total_tokens,
     };
   }
-  
+
   return result;
 }
 
@@ -215,7 +247,7 @@ export async function generateSummary(
 export async function generateSummaryStream(
   paperContent: string,
   onChunk: (chunk: string, fullContent: string) => void | Promise<void>,
-  options: Partial<SummaryOptions> = {}
+  options: Partial<SummaryOptions> = {},
 ): Promise<{
   summary: string;
   keywords?: string[];
@@ -224,9 +256,9 @@ export async function generateSummaryStream(
   const opts = { ...DEFAULT_SUMMARY_OPTIONS, ...options };
   const messages = buildSummaryPrompt(paperContent, opts);
   const lengthConfig = getLengthConfig(opts.length);
-  
+
   let fullContent = "";
-  
+
   await callLLMWithStream(
     messages,
     async (chunk: StreamChunk, content: string) => {
@@ -238,9 +270,9 @@ export async function generateSummaryStream(
     },
     {
       maxTokens: lengthConfig.maxTokens,
-    }
+    },
   );
-  
+
   // Parse response to extract keywords and highlights
   const result: {
     summary: string;
@@ -249,33 +281,45 @@ export async function generateSummaryStream(
   } = {
     summary: fullContent,
   };
-  
+
   // Extract keywords if requested
   if (opts.includeKeywords) {
     const keywordsMatch = fullContent.match(/关键词[：:]\s*([^\n]+)/);
     if (keywordsMatch) {
-      result.keywords = keywordsMatch[1].split(/[,，、]/).map((k) => k.trim()).filter(Boolean);
+      result.keywords = keywordsMatch[1]
+        .split(/[,，、]/)
+        .map((k) => k.trim())
+        .filter(Boolean);
     }
-    
+
     const keywordsMatchEn = fullContent.match(/Keywords?:\s*([^\n]+)/i);
     if (keywordsMatchEn && !result.keywords) {
-      result.keywords = keywordsMatchEn[1].split(/[,，、]/).map((k) => k.trim()).filter(Boolean);
+      result.keywords = keywordsMatchEn[1]
+        .split(/[,，、]/)
+        .map((k) => k.trim())
+        .filter(Boolean);
     }
   }
-  
+
   // Extract highlights if requested
   if (opts.includeHighlights) {
     const highlightsMatch = fullContent.match(/主要亮点[：:]\s*([^\n]+)/);
     if (highlightsMatch) {
-      result.highlights = highlightsMatch[1].split(/[,，、]/).map((h) => h.trim()).filter(Boolean);
+      result.highlights = highlightsMatch[1]
+        .split(/[,，、]/)
+        .map((h) => h.trim())
+        .filter(Boolean);
     }
-    
+
     const highlightsMatchEn = fullContent.match(/Highlights?:\s*([^\n]+)/i);
     if (highlightsMatchEn && !result.highlights) {
-      result.highlights = highlightsMatchEn[1].split(/[,，、]/).map((h) => h.trim()).filter(Boolean);
+      result.highlights = highlightsMatchEn[1]
+        .split(/[,，、]/)
+        .map((h) => h.trim())
+        .filter(Boolean);
     }
   }
-  
+
   return result;
 }
 
@@ -286,7 +330,7 @@ export async function generateSummaryFromBlocks(
   blocks: PDFBlock[],
   options: Partial<SummaryOptions> = {},
   useStream: boolean = false,
-  onChunk?: (chunk: string, fullContent: string) => void | Promise<void>
+  onChunk?: (chunk: string, fullContent: string) => void | Promise<void>,
 ): Promise<{
   summary: string;
   keywords?: string[];
@@ -298,15 +342,15 @@ export async function generateSummaryFromBlocks(
   };
 }> {
   const paperContent = extractPaperContent(blocks);
-  
+
   if (!paperContent) {
     throw new Error("No paper content available for summary");
   }
-  
+
   if (useStream && onChunk) {
     return generateSummaryStream(paperContent, onChunk, options);
   }
-  
+
   return generateSummary(paperContent, options);
 }
 
@@ -324,12 +368,12 @@ export function isLLMConfigured(): boolean {
 export class SummaryGenerator {
   private blocks: PDFBlock[];
   private options: SummaryOptions;
-  
+
   constructor(blocks: PDFBlock[], options: Partial<SummaryOptions> = {}) {
     this.blocks = blocks;
     this.options = { ...DEFAULT_SUMMARY_OPTIONS, ...options };
   }
-  
+
   /**
    * Generate summary
    */
@@ -341,12 +385,12 @@ export class SummaryGenerator {
     const paperContent = extractPaperContent(this.blocks);
     return generateSummary(paperContent, this.options);
   }
-  
+
   /**
    * Generate summary with streaming
    */
   async generateStream(
-    onChunk: (chunk: string, fullContent: string) => void | Promise<void>
+    onChunk: (chunk: string, fullContent: string) => void | Promise<void>,
   ): Promise<{
     summary: string;
     keywords?: string[];
@@ -355,14 +399,14 @@ export class SummaryGenerator {
     const paperContent = extractPaperContent(this.blocks);
     return generateSummaryStream(paperContent, onChunk, this.options);
   }
-  
+
   /**
    * Update options
    */
   setOptions(options: Partial<SummaryOptions>): void {
     this.options = { ...this.options, ...options };
   }
-  
+
   /**
    * Get current options
    */
