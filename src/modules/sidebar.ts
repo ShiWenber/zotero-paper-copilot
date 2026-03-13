@@ -8,6 +8,7 @@
 import { TranslationAPI, SUPPORTED_LANGUAGES } from "./translation";
 import { LLMAPI } from "./llm-api";
 import { SemanticScholarAPI, SemanticScholarPaper } from "./semantic-scholar";
+import { KnowledgeBase, CollectionDocument } from "./knowledge-base";
 
 export class SidebarUI {
   private static sidebarId = "zotero-paper-copilot-sidebar";
@@ -65,6 +66,7 @@ export class SidebarUI {
       '<div style="display: flex; gap: 8px; margin-bottom: 8px;">' +
       '<button id="btn-summarize" style="flex: 1; padding: 10px 16px; background: #0066cc; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">📝 Summarize</button>' +
       '<button id="btn-translate" style="flex: 1; padding: 10px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">🌐 Translate</button>' +
+      '<button id="btn-knowledge-base" style="flex: 1; padding: 10px 16px; background: #6f42c1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">💡 Q&A</button>' +
       "</div>" +
       '<div style="display: flex; gap: 8px;">' +
       '<button id="btn-recommend" style="flex: 1; padding: 10px 16px; background: #9c27b0; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">📚 Recommend</button>' +
@@ -97,12 +99,14 @@ export class SidebarUI {
       .getElementById("btn-translate")
       ?.addEventListener("click", () => this.showTranslate(win));
     doc
+      .getElementById("btn-knowledge-base")
+      ?.addEventListener("click", () => this.showKnowledgeBaseQA(win));
+    doc
       .getElementById("btn-recommend")
       ?.addEventListener("click", () => this.showRecommend(win));
     doc
       .getElementById("btn-search")
       ?.addEventListener("click", () => this.showSearch(win));
-
     // Log
     if (typeof ztoolkit !== "undefined") {
       ztoolkit.log("Paper Copilot sidebar created with native HTML");
@@ -863,6 +867,234 @@ export class SidebarUI {
       loadingDiv.style.display = "none";
       errorDiv.textContent = `Error: ${(error as Error).message}`;
       errorDiv.style.display = "block";
+    }
+  }
+
+  /**
+   * Show Knowledge Base Q&A interface
+   */
+  public static async showKnowledgeBaseQA(win: Window): Promise<void> {
+    const content = win.document.querySelector(
+      "#" + this.sidebarId + " > div:nth-child(2)",
+    );
+    if (!content) return;
+
+    // Check if LLM is configured
+    if (!LLMAPI.isConfigured()) {
+      this.showMessage(
+        win,
+        '<div style="text-align: center; padding: 20px;">' +
+          '<div style="font-size: 24px; margin-bottom: 16px;">⚠️</div>' +
+          '<div style="font-size: 16px; margin-bottom: 8px; color: #d32f2f;">LLM API Not Configured</div>' +
+          '<div style="font-size: 14px; color: #666;">Please configure your API key in Paper Copilot preferences to use the Knowledge Base Q&A feature.</div>' +
+          "</div>",
+      );
+      return;
+    }
+
+    // Show loading first
+    (content as HTMLElement).style.display = "block";
+    content.innerHTML =
+      '<div style="padding: 40px 20px; text-align: center;"><div style="font-size: 16px;">Loading knowledge base...</div></div>';
+
+    try {
+      // Get library stats
+      const stats = await KnowledgeBase.getCollectionStats();
+
+      // Hide chat area
+      const chatArea = win.document.getElementById("paper-copilot-chat-area");
+      if (chatArea) {
+        chatArea.style.display = "none";
+      }
+
+      // Build stats display
+      const yearStats = Object.entries(stats.byYear)
+        .sort((a, b) => Number(b[0]) - Number(a[0]))
+        .slice(0, 5)
+        .map(
+          ([year, count]) =>
+            `<span style="background: #e3f2fd; padding: 2px 8px; border-radius: 4px; margin: 2px; font-size: 12px;">${year}: ${count}</span>`,
+        )
+        .join(" ");
+
+      const typeStats = Object.entries(stats.byType)
+        .map(
+          ([type, count]) =>
+            `<span style="background: #f5f5f5; padding: 2px 8px; border-radius: 4px; margin: 2px; font-size: 12px;">${type}: ${count}</span>`,
+        )
+        .join(" ");
+
+      const tagStats = stats.topTags
+        .slice(0, 8)
+        .map(
+          (t) =>
+            `<span style="background: #fff3e0; padding: 2px 8px; border-radius: 4px; margin: 2px; font-size: 12px;">${t.tag} (${t.count})</span>`,
+        )
+        .join(" ");
+
+      content.innerHTML =
+        '<div style="padding: 16px;">' +
+        '<div style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #333;">💡 Ask about your library</div>' +
+        // Stats summary
+        '<div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 16px;">' +
+        `<div style="font-size: 14px; margin-bottom: 8px;"><strong>📚 ${stats.totalPapers} papers</strong> in your library</div>` +
+        (yearStats
+          ? `<div style="font-size: 12px; margin-bottom: 8px; color: #666;">Years: ${yearStats}</div>`
+          : "") +
+        (typeStats
+          ? `<div style="font-size: 12px; margin-bottom: 8px; color: #666;">Types: ${typeStats}</div>`
+          : "") +
+        (tagStats
+          ? `<div style="font-size: 12px; color: #666;">Tags: ${tagStats}</div>`
+          : "") +
+        "</div>" +
+        // Question input
+        '<div style="margin-bottom: 12px;">' +
+        '<textarea id="kb-question" rows="3" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical; box-sizing: border-box;" placeholder="Ask a question about your papers... (e.g., What are the main topics in my library?)"></textarea>' +
+        "</div>" +
+        '<div style="display: flex; gap: 8px; margin-bottom: 16px;">' +
+        '<button id="btn-ask-kb" style="flex: 1; padding: 12px 16px; background: #6f42c1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">🔍 Ask</button>' +
+        '<button id="btn-clear-kb-chat" style="padding: 12px 16px; background: #f5f5f5; color: #666; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; font-size: 14px;">🗑️ Clear</button>' +
+        "</div>" +
+        // Chat container
+        '<div id="kb-chat-container" style="max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; padding: 12px; background: #fafafa;"></div>' +
+        "</div>";
+
+      // Event listeners
+      win.document
+        .getElementById("btn-ask-kb")
+        ?.addEventListener("click", async () => {
+          const questionInput = win.document.getElementById(
+            "kb-question",
+          ) as HTMLTextAreaElement;
+          const question = questionInput?.value.trim();
+
+          if (!question) {
+            return;
+          }
+
+          await this.handleKBQuestion(win, question);
+        });
+
+      win.document
+        .getElementById("btn-clear-kb-chat")
+        ?.addEventListener("click", () => {
+          const container = win.document.getElementById("kb-chat-container");
+          if (container) {
+            container.innerHTML = "";
+          }
+        });
+
+      // Allow Enter to submit (Shift+Enter for newline)
+      const questionTextarea = win.document.getElementById(
+        "kb-question",
+      ) as HTMLTextAreaElement;
+      questionTextarea?.addEventListener("keydown", (e: KeyboardEvent) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          win.document.getElementById("btn-ask-kb")?.click();
+        }
+      });
+    } catch (e: any) {
+      this.showMessage(win, `Error loading knowledge base: ${e.message}`);
+    }
+  }
+
+  /**
+   * Handle knowledge base question submission
+   */
+  private static async handleKBQuestion(
+    win: Window,
+    question: string,
+  ): Promise<void> {
+    const container = win.document.getElementById("kb-chat-container");
+    if (!container) return;
+
+    // Add user question
+    const userMsg = win.document.createElement("div");
+    userMsg.style.cssText =
+      "padding: 12px; background: #e3f2fd; border-radius: 8px; margin-bottom: 12px; font-size: 14px;";
+    userMsg.textContent = question;
+    container.appendChild(userMsg);
+
+    // Add loading indicator
+    const loadingMsg = win.document.createElement("div");
+    loadingMsg.id = "kb-loading";
+    loadingMsg.style.cssText =
+      "padding: 12px; background: #f5f5f5; border-radius: 8px; margin-bottom: 12px; font-size: 14px; color: #666;";
+    loadingMsg.textContent = "🤔 Searching and thinking...";
+    container.appendChild(loadingMsg);
+
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
+
+    try {
+      let fullAnswer = "";
+
+      // Stream the answer
+      const result = await KnowledgeBase.askQuestion(question, undefined, {
+        maxDocuments: 5,
+        stream: (chunk: string) => {
+          fullAnswer += chunk;
+          loadingMsg.textContent =
+            "🤔 " +
+            fullAnswer.substring(0, 100) +
+            (fullAnswer.length > 100 ? "..." : "");
+        },
+      });
+
+      // Remove loading indicator
+      loadingMsg.remove();
+
+      // Add answer
+      const answerMsg = win.document.createElement("div");
+      answerMsg.style.cssText =
+        "padding: 12px; background: #f5f5f5; border-radius: 8px; margin-bottom: 12px; font-size: 14px; line-height: 1.6;";
+
+      // Format the answer with line breaks
+      const formattedAnswer = result.answer
+        .replace(/\n\n/g, "</p><p>")
+        .replace(/\n/g, "<br>");
+
+      answerMsg.innerHTML = `<p>${formattedAnswer}</p>`;
+
+      // Add sources if available
+      if (result.sources.length > 0) {
+        const sourcesDiv = win.document.createElement("div");
+        sourcesDiv.style.cssText =
+          "margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 12px; color: #666;";
+        sourcesDiv.innerHTML =
+          "<strong>📚 Sources:</strong><br>" +
+          result.sources
+            .slice(0, 3)
+            .map(
+              (s) =>
+                `• ${s.title.substring(0, 60)}${s.title.length > 60 ? "..." : ""}`,
+            )
+            .join("<br>");
+        answerMsg.appendChild(sourcesDiv);
+      }
+
+      container.appendChild(answerMsg);
+    } catch (e: any) {
+      loadingMsg.remove();
+
+      const errorMsg = win.document.createElement("div");
+      errorMsg.style.cssText =
+        "padding: 12px; background: #ffebee; border-radius: 8px; margin-bottom: 12px; font-size: 14px; color: #c62828;";
+      errorMsg.textContent = `Error: ${e.message}`;
+      container.appendChild(errorMsg);
+    }
+
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
+
+    // Clear input
+    const questionInput = win.document.getElementById(
+      "kb-question",
+    ) as HTMLTextAreaElement;
+    if (questionInput) {
+      questionInput.value = "";
     }
   }
 }
