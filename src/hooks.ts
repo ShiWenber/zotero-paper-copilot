@@ -10,6 +10,7 @@ import { registerPrefsScripts } from "./modules/preferenceScript";
 import { createZToolkit } from "./utils/ztoolkit";
 import { SidebarUI } from "./modules/sidebar";
 import { initPDFSelection } from "./modules/pdf-selection";
+import { initPDFParsing } from "./modules/pdf-parsing";
 
 async function onStartup() {
   await Promise.all([
@@ -97,7 +98,7 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
 
   // Initialize PDF text selection listener
   initPDFSelection(win);
-
+>>>>>>> feature/llm-api
   // Add menu item to toggle sidebar
   const menuItem = win.document.createElement("menuitem");
   menuItem.setAttribute("label", "Toggle Paper Copilot");
