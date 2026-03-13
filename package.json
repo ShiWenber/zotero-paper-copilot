@@ -26,7 +26,9 @@
     "lint:check": "prettier --check . && eslint .",
     "lint:fix": "prettier --write . && eslint . --fix",
     "release": "zotero-plugin release",
-    "test": "zotero-plugin test",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
     "update-deps": "npm update --save"
   },
   "dependencies": {
@@ -43,7 +45,9 @@
     "mocha": "^11.7.5",
     "prettier": "^3.7.4",
     "serialize-javascript": "^7.0.4",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
+    "vitest": "^4.1.0",
     "zotero-plugin-scaffold": "^0.8.3",
     "zotero-types": "^4.1.2"
   },
