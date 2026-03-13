@@ -16,29 +16,34 @@ Paper Copilot is a Zotero 7+ plugin that brings powerful AI capabilities to your
 ## ✨ Features
 
 ### 📚 Phase 1: Core Foundation
+
 - **Sidebar UI** - Elegant side panel for AI interactions
 - **PDF Text Extraction** - Select and extract text from any PDF
 - **Quick Actions** - One-click access to AI features
 
 ### 📄 Phase 2: PDF Analysis
+
 - **Page Structure Parsing** - Understand PDF layout and structure
 - **Figure Detection** - Identify charts, graphs, and images
 - **Table of Contents Extraction** - Auto-detect paper sections
 - **Metadata Storage** - Save and index paper information
 
 ### 💬 Phase 3: AI Conversation
+
 - **LLM API Integration** - Connect to OpenAI, Claude, Ollama, and more
 - **Chat Interface** - Natural conversation about papers
 - **Streaming Responses** - Real-time AI answers
 - **Context Awareness** - Understand paper content and structure
 
 ### 📝 Phase 4: Research Features
+
 - **Paper Summary** - Generate concise paper abstracts
 - **Translation** - Instant translation (DeepL, Google, LLM fallback)
 - **Knowledge Base Q&A** - Query your library collection
 - **Literature Recommendations** - Get related paper suggestions
 
 ### ⚡ Phase 5: Polish & Performance
+
 - **Performance Optimization** - Fast and responsive UI
 - **Theme Support** - Light/dark mode compatibility
 - **Onboarding** - Guided setup experience
@@ -47,6 +52,7 @@ Paper Copilot is a Zotero 7+ plugin that brings powerful AI capabilities to your
 ## 🚀 Installation
 
 ### Requirements
+
 - **Zotero 7+** (or newer beta)
 - **Node.js 18+** (for development)
 
@@ -80,6 +86,7 @@ npm run build
 ### Access Settings
 
 After installation, access settings via:
+
 - **Zotero Menu** → `Edit` → `Preferences` → `Paper Copilot`
 - Or click the plugin icon in the toolbar
 
@@ -99,15 +106,15 @@ After installation, access settings via:
 
 ### Preferences Reference
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `API Provider` | LLM service to use | OpenAI |
-| `API Key` | Your API key | - |
-| `Model` | LLM model to use | gpt-4o-mini |
-| `Temperature` | Response creativity | 0.7 |
-| `Max Tokens` | Response length limit | 2048 |
-| `Sidebar Width` | Panel width in pixels | 400 |
-| `Auto-open Sidebar` | Open when text selected | false |
+| Setting             | Description             | Default     |
+| ------------------- | ----------------------- | ----------- |
+| `API Provider`      | LLM service to use      | OpenAI      |
+| `API Key`           | Your API key            | -           |
+| `Model`             | LLM model to use        | gpt-4o-mini |
+| `Temperature`       | Response creativity     | 0.7         |
+| `Max Tokens`        | Response length limit   | 2048        |
+| `Sidebar Width`     | Panel width in pixels   | 400         |
+| `Auto-open Sidebar` | Open when text selected | false       |
 
 ## 📖 Usage Tutorials
 
@@ -134,6 +141,7 @@ Paper Copilot: Based on the paper's abstract and structure...
 ### Generating Summary
 
 Click the **Summarize** button to get:
+
 - Paper overview
 - Key findings
 - Methodology summary
@@ -149,6 +157,7 @@ Click the **Summarize** button to get:
 ### Knowledge Base Q&A
 
 Ask questions about your entire library:
+
 ```
 User: What papers discuss transformer architectures?
 Paper Copilot: Found 5 papers in your library...
@@ -157,35 +166,45 @@ Paper Copilot: Found 5 papers in your library...
 ## 🖼️ Screenshots
 
 ### Main Interface
+
 ![Sidebar Interface](doc/images/sidebar.png)
 
 ### Preferences Panel
+
 ![Preferences](doc/images/preferences.png)
 
 ### PDF Interaction
+
 ![PDF Selection](doc/images/pdf-selection.png)
 
 ## ❓ FAQ
 
 ### Q: Does this work with Zotero 6?
+
 A: No, Paper Copilot requires Zotero 7 or newer due to API compatibility.
 
 ### Q: Which LLM providers are supported?
+
 A: OpenAI (GPT-4, GPT-4o), Anthropic (Claude), Ollama (local), and compatible APIs.
 
 ### Q: Is my data secure?
+
 A: Yes. API calls are made directly from your machine. No data is stored on external servers beyond the LLM provider.
 
 ### Q: Why isn't the sidebar showing?
+
 A: Try restarting Zotero. If issues persist, check the debug output (Help → Debug Output Logging).
 
 ### Q: How do I change the sidebar language?
+
 A: Language settings are in Preferences → General → Language.
 
 ### Q: Can I use my own LLM endpoint?
+
 A: Yes, configure custom endpoints in Preferences → Advanced → Custom API Endpoint.
 
 ### Q: The plugin doesn't load after installation
+
 A: Check that you have Zotero 7+. Try reinstalling or check the error in Help → Debug Output Logging.
 
 ## 📝 Changelog

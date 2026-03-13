@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2026-03-13
 
 ### Added
+
 - **Phase 1: Core Foundation**
   - Sidebar UI with native HTML implementation
   - PDF text extraction from Zotero reader
@@ -40,11 +41,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - UI/UX improvements
 
 ### Changed
+
 - Migrated from Vue 3 to native HTML for sidebar
 - Improved PDF selection detection
 - Enhanced preference pane with table support
 
 ### Fixed
+
 - PDF text selection in Zotero 7 reader
 - Sidebar toggle menu integration
 - Initial startup sequence
@@ -52,12 +55,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2024-03-12
 
 ### Added
+
 - Initial plugin structure from zotero-plugin-template
 - Basic sidebar UI framework (Vue 3)
 - PDF text selection extraction
 - Basic preferences pane
 
 ### Notes
+
 - This version is considered pre-release
 - Basic functionality for text selection and UI
 
@@ -65,10 +70,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
-| Version | Date | Status |
-|---------|------|--------|
-| 1.0.0 | 2026-03-13 | Current |
-| 0.1.0 | 2024-03-12 | Deprecated |
+| Version | Date       | Status     |
+| ------- | ---------- | ---------- |
+| 1.0.0   | 2026-03-13 | Current    |
+| 0.1.0   | 2024-03-12 | Deprecated |
 
 ## Upgrade Notes
 
@@ -93,4 +98,4 @@ See [GitHub Projects](https://github.com/ShiWenber/zotero-paper-copilot/projects
 
 ---
 
-*Generated on 2026-03-13*
+_Generated on 2026-03-13_

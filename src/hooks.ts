@@ -94,10 +94,10 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
 
   // Register Paper Copilot Sidebar
   SidebarUI.create(win);
-  
+
   // Initialize PDF text selection listener
   initPDFSelection(win);
-  
+
   // Add menu item to toggle sidebar
   const menuItem = win.document.createElement("menuitem");
   menuItem.setAttribute("label", "Toggle Paper Copilot");
@@ -105,9 +105,9 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   menuItem.addEventListener("command", () => {
     SidebarUI.toggle(win);
   });
-  
+
   // Add to tools menu
-  const toolsMenu = win.document.querySelector('#menu_ToolsPopup');
+  const toolsMenu = win.document.querySelector("#menu_ToolsPopup");
   if (toolsMenu) {
     toolsMenu.appendChild(menuItem);
   }

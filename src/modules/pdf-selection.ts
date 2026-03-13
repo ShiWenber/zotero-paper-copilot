@@ -1,6 +1,6 @@
 /**
  * Zotero Paper Copilot - PDF Selection Module
- * 
+ *
  * Handles PDF text selection in Zotero's internal reader
  * Reference: zotero-gpt, zotero-pdf-translate
  */
@@ -9,7 +9,7 @@ import { SidebarUI } from "./sidebar";
 
 export class PDFSelection {
   private static initialized = false;
-  
+
   /**
    * Initialize PDF selection listener
    */
@@ -17,17 +17,17 @@ export class PDFSelection {
     if (this.initialized) {
       return;
     }
-    
+
     this.initialized = true;
-    
+
     // Wait for Zotero reader to be ready
     this.setupPDFListener(win);
-    
+
     if (typeof ztoolkit !== "undefined") {
       ztoolkit.log("Paper Copilot: PDF selection listener initialized");
     }
   }
-  
+
   /**
    * Set up PDF text selection listener
    */
@@ -40,11 +40,11 @@ export class PDFSelection {
         this.handleTextSelection(win);
       }, 100);
     });
-    
+
     // Method 2: Listen for Zotero reader events
     this.setupReaderListener(win);
   }
-  
+
   /**
    * Set up Zotero reader-specific listener
    */
@@ -53,23 +53,25 @@ export class PDFSelection {
     win.addEventListener("load", () => {
       this.setupIframeListener(win);
     });
-    
+
     // Try immediately in case iframe is already loaded
     setTimeout(() => {
       this.setupIframeListener(win);
     }, 2000);
   }
-  
+
   /**
    * Set up listener inside PDF reader iframe
    */
   private static setupIframeListener(win: Window): void {
     // Find the PDF viewer iframe
-    const iframe = win.document.querySelector("iframe[name='reader']") as HTMLIFrameElement;
+    const iframe = win.document.querySelector(
+      "iframe[name='reader']",
+    ) as HTMLIFrameElement;
     if (!iframe || !iframe.contentWindow) {
       return;
     }
-    
+
     try {
       const iframeDoc = iframe.contentWindow?.document;
       if (iframeDoc) {
@@ -79,7 +81,7 @@ export class PDFSelection {
             this.handleTextSelection(win);
           }, 100);
         });
-        
+
         if (typeof ztoolkit !== "undefined") {
           ztoolkit.log("Paper Copilot: PDF iframe listener set up");
         }
@@ -91,7 +93,7 @@ export class PDFSelection {
       }
     }
   }
-  
+
   /**
    * Handle text selection
    */
@@ -100,27 +102,31 @@ export class PDFSelection {
     if (!selection) {
       return;
     }
-    
+
     const selectedText = selection.toString().trim();
-    
+
     // Only process if there's meaningful text selected
     if (selectedText.length < 2) {
       return;
     }
-    
+
     // Limit text length for API calls
-    const truncatedText = selectedText.length > 2000 
-      ? selectedText.substring(0, 2000) + "..." 
-      : selectedText;
-    
+    const truncatedText =
+      selectedText.length > 2000
+        ? selectedText.substring(0, 2000) + "..."
+        : selectedText;
+
     if (typeof ztoolkit !== "undefined") {
-      ztoolkit.log("Paper Copilot: Text selected:", truncatedText.substring(0, 50) + "...");
+      ztoolkit.log(
+        "Paper Copilot: Text selected:",
+        truncatedText.substring(0, 50) + "...",
+      );
     }
-    
+
     // Show selected text in sidebar
     this.showInSidebar(win, truncatedText);
   }
-  
+
   /**
    * Show selected text in sidebar
    */
@@ -130,15 +136,17 @@ export class PDFSelection {
     if (!sidebar) {
       // Sidebar not open, could auto-open or show notification
       if (typeof ztoolkit !== "undefined") {
-        ztoolkit.log("Paper Copilot: Sidebar not open, text selected but not shown");
+        ztoolkit.log(
+          "Paper Copilot: Sidebar not open, text selected but not shown",
+        );
       }
       return;
     }
-    
+
     // Use sidebar's message method
     SidebarUI.showSelectedText(win, text);
   }
-  
+
   /**
    * Get current PDF item information
    */
@@ -159,7 +167,7 @@ export class PDFSelection {
     }
     return null;
   }
-  
+
   /**
    * Extract more context from PDF (page number, etc.)
    */
@@ -167,7 +175,7 @@ export class PDFSelection {
     const context: any = {
       timestamp: new Date().toISOString(),
     };
-    
+
     try {
       // Try to get page number from Zotero reader
       const reader = win.document.querySelector("[id*='pdf-viewer']");
@@ -178,7 +186,7 @@ export class PDFSelection {
     } catch (e) {
       // Ignore
     }
-    
+
     return context;
   }
 }
