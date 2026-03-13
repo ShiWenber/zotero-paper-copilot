@@ -12,6 +12,7 @@ import { SidebarUI } from "./modules/sidebar";
 import { initPDFSelection } from "./modules/pdf-selection";
 import { initPDFParsing } from "./modules/pdf-parsing";
 import { initTranslationAPI } from "./modules/translation";
+import { initSemanticScholarAPI } from "./modules/semantic-scholar";
 
 async function onStartup() {
   await Promise.all([
@@ -105,6 +106,9 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
 
   // Initialize Translation API
   initTranslationAPI();
+
+  // Initialize Semantic Scholar API
+  initSemanticScholarAPI();
 
   // Add menu item to toggle sidebar
   const menuItem = win.document.createElement("menuitem");
