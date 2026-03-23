@@ -18,27 +18,71 @@ async function onStartup() {
     Zotero.uiReadyPromise,
   ]);
 
-  initLocale();
+  // Initialize ztoolkit BEFORE calling any example factories
+  // because they use ztoolkit internally
+  addon.data.ztoolkit = createZToolkit();
 
-  BasicExampleFactory.registerPrefs();
+  try {
+    initLocale();
+  } catch (e) {
+    ztoolkit.log("Failed to init locale:", e);
+  }
 
-  BasicExampleFactory.registerNotifier();
+  try {
+    BasicExampleFactory.registerPrefs();
+  } catch (e) {
+    ztoolkit.log("Failed to register prefs:", e);
+  }
 
-  KeyExampleFactory.registerShortcuts();
+  try {
+    BasicExampleFactory.registerNotifier();
+  } catch (e) {
+    ztoolkit.log("Failed to register notifier:", e);
+  }
 
-  await UIExampleFactory.registerExtraColumn();
+  try {
+    KeyExampleFactory.registerShortcuts();
+  } catch (e) {
+    ztoolkit.log("Failed to register shortcuts:", e);
+  }
 
-  await UIExampleFactory.registerExtraColumnWithCustomCell();
+  try {
+    await UIExampleFactory.registerExtraColumn();
+  } catch (e) {
+    ztoolkit.log("Failed to register extra column:", e);
+  }
 
-  UIExampleFactory.registerItemPaneCustomInfoRow();
+  try {
+    await UIExampleFactory.registerExtraColumnWithCustomCell();
+  } catch (e) {
+    ztoolkit.log("Failed to register extra column with custom cell:", e);
+  }
 
-  UIExampleFactory.registerItemPaneSection();
+  try {
+    UIExampleFactory.registerItemPaneCustomInfoRow();
+  } catch (e) {
+    ztoolkit.log("Failed to register item pane custom info row:", e);
+  }
 
-  UIExampleFactory.registerReaderItemPaneSection();
+  try {
+    UIExampleFactory.registerItemPaneSection();
+  } catch (e) {
+    ztoolkit.log("Failed to register item pane section:", e);
+  }
 
-  await Promise.all(
-    Zotero.getMainWindows().map((win) => onMainWindowLoad(win)),
-  );
+  try {
+    UIExampleFactory.registerReaderItemPaneSection();
+  } catch (e) {
+    ztoolkit.log("Failed to register reader item pane section:", e);
+  }
+
+  try {
+    await Promise.all(
+      Zotero.getMainWindows().map((win) => onMainWindowLoad(win)),
+    );
+  } catch (e) {
+    ztoolkit.log("Failed in onMainWindowLoad:", e);
+  }
 
   // Mark initialized as true to confirm plugin loading status
   // outside of the plugin (e.g. scaffold testing process)
@@ -74,43 +118,43 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   try {
     UIExampleFactory.registerStyleSheet(win);
   } catch (e) {
-    ztoolkit.log("Failed to register stylesheet:", e);
+    console.error("Failed to register stylesheet:", e);
   }
 
   try {
     UIExampleFactory.registerRightClickMenuItem(win);
   } catch (e) {
-    ztoolkit.log("Failed to register right click menu item:", e);
+    console.error("Failed to register right click menu item:", e);
   }
 
   try {
     UIExampleFactory.registerRightClickMenuPopup(win);
   } catch (e) {
-    ztoolkit.log("Failed to register right click menu popup:", e);
+    console.error("Failed to register right click menu popup:", e);
   }
 
   try {
     UIExampleFactory.registerWindowMenuWithSeparator(win);
   } catch (e) {
-    ztoolkit.log("Failed to register window menu:", e);
+    console.error("Failed to register window menu:", e);
   }
 
   try {
     PromptExampleFactory.registerNormalCommandExample();
   } catch (e) {
-    ztoolkit.log("Failed to register normal command:", e);
+    console.error("Failed to register normal command:", e);
   }
 
   try {
     PromptExampleFactory.registerAnonymousCommandExample(win);
   } catch (e) {
-    ztoolkit.log("Failed to register anonymous command:", e);
+    console.error("Failed to register anonymous command:", e);
   }
 
   try {
     PromptExampleFactory.registerConditionalCommandExample();
   } catch (e) {
-    ztoolkit.log("Failed to register conditional command:", e);
+    console.error("Failed to register conditional command:", e);
   }
 
   await Zotero.Promise.delay(1000);
@@ -125,13 +169,13 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   try {
     SidebarUI.create(win);
   } catch (e) {
-    ztoolkit.log("Failed to create sidebar:", e);
+    console.error("Failed to create sidebar:", e);
   }
 
   try {
     initPDFSelection(win);
   } catch (e) {
-    ztoolkit.log("Failed to init PDF selection:", e);
+    console.error("Failed to init PDF selection:", e);
   }
 
   // Add menu item to toggle sidebar - this must not fail
@@ -146,30 +190,34 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
     const toolsMenu = win.document.querySelector("#menu_ToolsPopup");
     if (toolsMenu) {
       toolsMenu.appendChild(menuItem);
-      ztoolkit.log("Paper Copilot menu item added to Tools menu");
+      console.log("Paper Copilot menu item added to Tools menu");
     } else {
-      ztoolkit.log("Tools menu not found!");
+      console.error("Tools menu not found!");
     }
   } catch (e) {
-    ztoolkit.log("Failed to add menu item:", e);
+    console.error("Failed to add menu item:", e);
   }
 
   try {
     addon.hooks.onDialogEvents("dialogExample");
   } catch (e) {
-    ztoolkit.log("Failed to trigger dialog events:", e);
+    console.error("Failed to trigger dialog events:", e);
   }
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {
   ztoolkit.unregisterAll();
-  SidebarUI.remove();
+  SidebarUI.remove(win);
   addon.data.dialog?.window?.close();
 }
 
 function onShutdown(): void {
   ztoolkit.unregisterAll();
-  SidebarUI.remove();
+  // Get the first main window to remove sidebar
+  const win = Zotero.getMainWindows()[0];
+  if (win) {
+    SidebarUI.remove(win);
+  }
   addon.data.dialog?.window?.close();
   // Remove addon object
   addon.data.alive = false;

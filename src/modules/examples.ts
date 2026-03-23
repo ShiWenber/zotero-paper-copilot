@@ -8,10 +8,15 @@ function example(
   const original = descriptor.value;
   descriptor.value = function (...args: any) {
     try {
-      ztoolkit.log(`Calling example ${target.name}.${String(propertyKey)}`);
+      // Only call ztoolkit.log if ztoolkit is available (after onMainWindowLoad)
+      if (typeof ztoolkit !== "undefined" && ztoolkit) {
+        ztoolkit.log(`Calling example ${target.name}.${String(propertyKey)}`);
+      }
       return original.apply(this, args);
     } catch (e) {
-      ztoolkit.log(`Error in example ${target.name}.${String(propertyKey)}`, e);
+      if (typeof ztoolkit !== "undefined" && ztoolkit) {
+        ztoolkit.log(`Error in example ${target.name}.${String(propertyKey)}`, e);
+      }
       throw e;
     }
   };

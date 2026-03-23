@@ -13,7 +13,7 @@ export class SidebarUI {
    * Create sidebar using ztoolkit.UI
    */
   public static create(win: Window): void {
-    this.remove();
+    this.remove(win);
 
     const doc = win.document;
 
@@ -97,8 +97,8 @@ export class SidebarUI {
   /**
    * Remove sidebar
    */
-  public static remove(): void {
-    const sidebar = document.getElementById(this.sidebarId);
+  public static remove(win: Window): void {
+    const sidebar = win.document.getElementById(this.sidebarId);
     if (sidebar) {
       sidebar.remove();
       if (typeof ztoolkit !== "undefined") {
@@ -111,9 +111,9 @@ export class SidebarUI {
    * Toggle sidebar
    */
   public static toggle(win: Window): void {
-    const sidebar = document.getElementById(this.sidebarId);
+    const sidebar = win.document.getElementById(this.sidebarId);
     if (sidebar) {
-      this.remove();
+      this.remove(win);
     } else {
       this.create(win);
     }
