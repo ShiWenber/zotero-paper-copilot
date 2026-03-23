@@ -121,27 +121,44 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   });
   popupWin.startCloseTimer(5000);
 
-  // Register Paper Copilot Sidebar
-  SidebarUI.create(win);
-
-  // Initialize PDF text selection listener
-  initPDFSelection(win);
-
-  // Add menu item to toggle sidebar
-  const menuItem = win.document.createElement("menuitem");
-  menuItem.setAttribute("label", "Toggle Paper Copilot");
-  menuItem.setAttribute("id", "paper-copilot-menu-item");
-  menuItem.addEventListener("command", () => {
-    SidebarUI.toggle(win);
-  });
-
-  // Add to tools menu
-  const toolsMenu = win.document.querySelector("#menu_ToolsPopup");
-  if (toolsMenu) {
-    toolsMenu.appendChild(menuItem);
+  // Register Paper Copilot Sidebar and menu item - wrap in try-catch to ensure menu is added
+  try {
+    SidebarUI.create(win);
+  } catch (e) {
+    ztoolkit.log("Failed to create sidebar:", e);
   }
 
-  addon.hooks.onDialogEvents("dialogExample");
+  try {
+    initPDFSelection(win);
+  } catch (e) {
+    ztoolkit.log("Failed to init PDF selection:", e);
+  }
+
+  // Add menu item to toggle sidebar - this must not fail
+  try {
+    const menuItem = win.document.createElement("menuitem");
+    menuItem.setAttribute("label", "Toggle Paper Copilot");
+    menuItem.setAttribute("id", "paper-copilot-menu-item");
+    menuItem.addEventListener("command", () => {
+      SidebarUI.toggle(win);
+    });
+
+    const toolsMenu = win.document.querySelector("#menu_ToolsPopup");
+    if (toolsMenu) {
+      toolsMenu.appendChild(menuItem);
+      ztoolkit.log("Paper Copilot menu item added to Tools menu");
+    } else {
+      ztoolkit.log("Tools menu not found!");
+    }
+  } catch (e) {
+    ztoolkit.log("Failed to add menu item:", e);
+  }
+
+  try {
+    addon.hooks.onDialogEvents("dialogExample");
+  } catch (e) {
+    ztoolkit.log("Failed to trigger dialog events:", e);
+  }
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {
