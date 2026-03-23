@@ -138,50 +138,94 @@ export class UIExampleFactory {
 
   @example
   static registerRightClickMenuItem() {
+    // Note: ztoolkit.Menu.register() is not available in zotero-plugin-toolkit v5.x
+    // Using native Zotero menu API instead
     const menuIcon = `chrome://${addon.data.config.addonRef}/content/icons/favicon@0.5x.png`;
-    // item menuitem with icon
-    ztoolkit.Menu.register("item", {
-      tag: "menuitem",
-      id: "zotero-itemmenu-addontemplate-test",
-      label: getString("menuitem-label"),
-      commandListener: (ev) => addon.hooks.onDialogEvents("dialogExample"),
-      icon: menuIcon,
-    });
+    const menuitem = ztoolkit.UI.createElement(
+      document,
+      "menuitem",
+      {
+        id: "zotero-itemmenu-addontemplate-test",
+        attributes: {
+          label: getString("menuitem-label"),
+        },
+        listeners: [
+          {
+            type: "command",
+            listener: (ev: Event) => addon.hooks.onDialogEvents("dialogExample"),
+          },
+        ],
+      }
+    );
+    if (menuIcon) {
+      menuitem.setAttribute("class", "menuitem-iconic");
+      menuitem.style.listStyleImage = `url("${menuIcon}")`;
+    }
+    // Append to item context menu
+    const popup = document.querySelector("#zotero-itemmenu-popup");
+    if (popup) {
+      popup.appendChild(menuitem);
+    }
   }
 
   @example
   static registerRightClickMenuPopup(win: Window) {
-    ztoolkit.Menu.register(
-      "item",
-      {
-        tag: "menu",
+    // Note: ztoolkit.Menu.register() is not available in zotero-plugin-toolkit v5.x
+    // Creating menu using native Zotero API
+    const menu = ztoolkit.UI.createElement(win.document, "menu", {
+      id: "zotero-itemmenu-addontemplate-submenu",
+      attributes: {
         label: getString("menupopup-label"),
-        children: [
-          {
-            tag: "menuitem",
-            label: getString("menuitem-submenulabel"),
-            oncommand: "alert('Hello World! Sub Menuitem.')",
-          },
-        ],
       },
-      "before",
-      win.document?.querySelector(
-        "#zotero-itemmenu-addontemplate-test",
-      ) as XUL.MenuItem,
-    );
+    });
+    const menupopup = ztoolkit.UI.createElement(win.document, "menupopup", {});
+    const submenuitem = ztoolkit.UI.createElement(win.document, "menuitem", {
+      attributes: {
+        label: getString("menuitem-submenulabel"),
+      },
+      listeners: [
+        {
+          type: "command",
+          listener: () => ztoolkit.log("Hello World! Sub Menuitem."),
+        },
+      ],
+    });
+    menupopup.appendChild(submenuitem);
+    menu.appendChild(menupopup);
+    // Insert before the test menuitem
+    const refMenuitem = win.document.querySelector(
+      "#zotero-itemmenu-addontemplate-test",
+    ) as XUL.MenuItem;
+    if (refMenuitem && refMenuitem.parentNode) {
+      refMenuitem.parentNode.insertBefore(menu, refMenuitem);
+    }
   }
 
   @example
   static registerWindowMenuWithSeparator() {
-    ztoolkit.Menu.register("menuFile", {
-      tag: "menuseparator",
+    // Note: ztoolkit.Menu.register() is not available in zotero-plugin-toolkit v5.x
+    // Using native Zotero menu API
+    const menuFile = document.querySelector("#menu_FilePopup");
+    if (!menuFile) return;
+    
+    const sep = ztoolkit.UI.createElement(document, "menuseparator", {
+      id: "addon-template-filemenu-sep",
     });
-    // menu->File menuitem
-    ztoolkit.Menu.register("menuFile", {
-      tag: "menuitem",
-      label: getString("menuitem-filemenulabel"),
-      oncommand: "alert('Hello World! File Menuitem.')",
+    menuFile.appendChild(sep);
+    
+    const menuitem = ztoolkit.UI.createElement(document, "menuitem", {
+      id: "addon-template-filemenu-item",
+      attributes: {
+        label: getString("menuitem-filemenulabel"),
+      },
+      listeners: [
+        {
+          type: "command",
+          listener: () => ztoolkit.log("Hello World! File Menuitem."),
+        },
+      ],
     });
+    menuFile.appendChild(menuitem);
   }
 
   @example
