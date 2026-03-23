@@ -70,19 +70,48 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
     text: `[30%] ${getString("startup-begin")}`,
   });
 
-  UIExampleFactory.registerStyleSheet(win);
+  // Register UI examples - wrap in try-catch to not block startup
+  try {
+    UIExampleFactory.registerStyleSheet(win);
+  } catch (e) {
+    ztoolkit.log("Failed to register stylesheet:", e);
+  }
 
-  UIExampleFactory.registerRightClickMenuItem(win);
+  try {
+    UIExampleFactory.registerRightClickMenuItem(win);
+  } catch (e) {
+    ztoolkit.log("Failed to register right click menu item:", e);
+  }
 
-  UIExampleFactory.registerRightClickMenuPopup(win);
+  try {
+    UIExampleFactory.registerRightClickMenuPopup(win);
+  } catch (e) {
+    ztoolkit.log("Failed to register right click menu popup:", e);
+  }
 
-  UIExampleFactory.registerWindowMenuWithSeparator(win);
+  try {
+    UIExampleFactory.registerWindowMenuWithSeparator(win);
+  } catch (e) {
+    ztoolkit.log("Failed to register window menu:", e);
+  }
 
-  PromptExampleFactory.registerNormalCommandExample();
+  try {
+    PromptExampleFactory.registerNormalCommandExample();
+  } catch (e) {
+    ztoolkit.log("Failed to register normal command:", e);
+  }
 
-  PromptExampleFactory.registerAnonymousCommandExample(win);
+  try {
+    PromptExampleFactory.registerAnonymousCommandExample(win);
+  } catch (e) {
+    ztoolkit.log("Failed to register anonymous command:", e);
+  }
 
-  PromptExampleFactory.registerConditionalCommandExample();
+  try {
+    PromptExampleFactory.registerConditionalCommandExample();
+  } catch (e) {
+    ztoolkit.log("Failed to register conditional command:", e);
+  }
 
   await Zotero.Promise.delay(1000);
 
