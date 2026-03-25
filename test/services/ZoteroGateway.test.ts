@@ -69,12 +69,7 @@ describe("ZoteroGateway", function () {
 
     it("should filter out items without id", function () {
       const mockPane = {
-        getSelectedItems: () => [
-          { id: 1 },
-          { id: null },
-          { id: 2 },
-          {},
-        ],
+        getSelectedItems: () => [{ id: 1 }, { id: null }, { id: 2 }, {}],
       };
       mockZotero.getActiveZoteroPane = () => mockPane;
       const items = gateway.getSelectedItems();
@@ -255,10 +250,7 @@ describe("ZoteroGateway", function () {
       assert.deepEqual(gateway.getCollectionItems(0), []);
       assert.deepEqual(gateway.getCollectionItems(null as any), []);
       assert.deepEqual(gateway.getCollectionItems(undefined as any), []);
-      assert.deepEqual(
-        gateway.getCollectionItems("not-a-number" as any),
-        []
-      );
+      assert.deepEqual(gateway.getCollectionItems("not-a-number" as any), []);
     });
 
     it("should return empty array when collection not found", function () {

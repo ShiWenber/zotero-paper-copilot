@@ -7,6 +7,7 @@
  */
 
 import { assert } from "chai";
+/* eslint-disable mocha/max-top-level-suites */
 import { Agent } from "../../src/agent/Agent";
 import { SidebarAgentIntegrator } from "../../src/integration/SidebarAgentIntegrator";
 
@@ -332,7 +333,9 @@ describe("SidebarAgentIntegrator internal MockAgent", function () {
           if (messages.length === 1) {
             return {
               content: "Let me search for that.",
-              toolCalls: [{ id: "call_1", name: "search", arguments: { q: "test" } }],
+              toolCalls: [
+                { id: "call_1", name: "search", arguments: { q: "test" } },
+              ],
             };
           }
           return { content: "Found results for 'test'." };
@@ -344,7 +347,10 @@ describe("SidebarAgentIntegrator internal MockAgent", function () {
         name: "search",
         description: "Search",
         parameters: {},
-        handler: async (args: any) => ({ id: "call_1", result: { found: 5, query: args.q } }),
+        handler: async (args: any) => ({
+          id: "call_1",
+          result: { found: 5, query: args.q },
+        }),
       });
 
       const response = await (agent as any).run({

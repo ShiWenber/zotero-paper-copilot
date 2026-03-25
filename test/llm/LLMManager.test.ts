@@ -264,7 +264,9 @@ describe("LLMManager", function () {
       (freshManager as any).adapters = new Map();
       (freshManager as any)._currentProvider = "openai";
 
-      await assert.isRejected(freshManager.complete([{ role: "user", content: "Hi" }]));
+      await assert.isRejected(
+        freshManager.complete([{ role: "user", content: "Hi" }]),
+      );
     });
 
     it("should pass tools to adapter", async function () {
@@ -290,7 +292,9 @@ describe("LLMManager", function () {
       const adapter = new MockAdapter();
       manager.registerAdapter("openai", adapter);
 
-      const tools = [{ name: "test_tool", description: "A test", parameters: {} }];
+      const tools = [
+        { name: "test_tool", description: "A test", parameters: {} },
+      ];
       await manager.complete([{ role: "user", content: "Hi" }], tools);
 
       assert.isArray(adapter.lastTools);

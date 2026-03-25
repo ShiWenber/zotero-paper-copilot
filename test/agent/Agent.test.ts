@@ -34,45 +34,45 @@ class TestableAgent extends Agent {
   }
 }
 
-describe("Agent", () => {
+describe("Agent", function () {
   let agent: TestableAgent;
 
-  beforeEach(() => {
+  beforeEach(function () {
     agent = new TestableAgent({ systemPrompt: "You are a helpful assistant." });
   });
 
-  describe("constructor", () => {
-    it("should create an agent with default config", () => {
+  describe("constructor", function () {
+    it("should create an agent with default config", function () {
       const defaultAgent = new Agent();
       assert.isNotNull(defaultAgent);
     });
 
-    it("should accept custom system prompt", () => {
+    it("should accept custom system prompt", function () {
       const customAgent = new Agent({
         systemPrompt: "Custom system prompt for testing.",
       });
       assert.isNotNull(customAgent);
     });
 
-    it("should accept maxIterations parameter", () => {
+    it("should accept maxIterations parameter", function () {
       const customAgent = new Agent({ maxIterations: 5 });
       assert.isNotNull(customAgent);
     });
 
-    it("should set default maxIterations to 10", () => {
+    it("should set default maxIterations to 10", function () {
       // This is implicit - the agent should not exceed 10 iterations
       const defaultAgent = new Agent();
       assert.isNotNull(defaultAgent);
     });
 
-    it("should accept empty config", () => {
+    it("should accept empty config", function () {
       const emptyAgent = new Agent({});
       assert.isNotNull(emptyAgent);
     });
   });
 
-  describe("registerTool", () => {
-    it("should register a tool", () => {
+  describe("registerTool", function () {
+    it("should register a tool", function () {
       const mockTool: ToolDefinition = {
         name: "mock_tool",
         description: "Mock tool",
@@ -86,7 +86,7 @@ describe("Agent", () => {
       assert.equal(retrieved?.name, "mock_tool");
     });
 
-    it("should register multiple tools", () => {
+    it("should register multiple tools", function () {
       const tool1: ToolDefinition = {
         name: "tool_1",
         description: "First tool",
@@ -116,7 +116,7 @@ describe("Agent", () => {
       assert.isDefined(agent.getTool("tool_3"));
     });
 
-    it("should throw when registering duplicate tool", () => {
+    it("should throw when registering duplicate tool", function () {
       const mockTool: ToolDefinition = {
         name: "dup_tool",
         description: "Duplicate",
@@ -128,7 +128,7 @@ describe("Agent", () => {
       assert.throws(() => agent.registerTool(mockTool));
     });
 
-    it("should throw with descriptive error for duplicate tool", () => {
+    it("should throw with descriptive error for duplicate tool", function () {
       const mockTool: ToolDefinition = {
         name: "unique_tool",
         description: "A unique tool",
@@ -146,7 +146,7 @@ describe("Agent", () => {
       }
     });
 
-    it("should allow re-registration after unregistering", () => {
+    it("should allow re-registration after unregistering", function () {
       const tool: ToolDefinition = {
         name: "reusable_tool",
         description: "Can be re-registered",
@@ -162,13 +162,13 @@ describe("Agent", () => {
     });
   });
 
-  describe("getTool", () => {
-    it("should return undefined for non-existent tool", () => {
+  describe("getTool", function () {
+    it("should return undefined for non-existent tool", function () {
       const result = agent.getTool("nonexistent_tool");
       assert.isUndefined(result);
     });
 
-    it("should return registered tool", () => {
+    it("should return registered tool", function () {
       const tool: ToolDefinition = {
         name: "get_test",
         description: "Test get method",
@@ -182,7 +182,7 @@ describe("Agent", () => {
       assert.equal(retrieved?.description, "Test get method");
     });
 
-    it("should return undefined for empty string tool name", () => {
+    it("should return undefined for empty string tool name", function () {
       agent.registerTool({
         name: "",
         description: "",
@@ -194,14 +194,14 @@ describe("Agent", () => {
     });
   });
 
-  describe("getTools", () => {
-    it("should return empty array when no tools registered", () => {
+  describe("getTools", function () {
+    it("should return empty array when no tools registered", function () {
       const tools = agent.getTools();
       assert.isArray(tools);
       assert.lengthOf(tools, 0);
     });
 
-    it("should return all registered tools", () => {
+    it("should return all registered tools", function () {
       agent.registerTool({
         name: "a_tool",
         description: "A",
@@ -219,7 +219,7 @@ describe("Agent", () => {
       assert.lengthOf(tools, 2);
     });
 
-    it("should return a copy of tools (not reference)", () => {
+    it("should return a copy of tools (not reference)", function () {
       agent.registerTool({
         name: "safe_tool",
         description: "Safe",
@@ -238,12 +238,12 @@ describe("Agent", () => {
     });
   });
 
-  describe("hasTool", () => {
-    it("should return false for unregistered tool", () => {
+  describe("hasTool", function () {
+    it("should return false for unregistered tool", function () {
       assert.isFalse(agent.hasTool("not_registered"));
     });
 
-    it("should return true for registered tool", () => {
+    it("should return true for registered tool", function () {
       agent.registerTool({
         name: "has_test",
         description: "Test",
@@ -253,7 +253,7 @@ describe("Agent", () => {
       assert.isTrue(agent.hasTool("has_test"));
     });
 
-    it("should return false after unregistering", () => {
+    it("should return false after unregistering", function () {
       agent.registerTool({
         name: "temp_tool",
         description: "Temp",
@@ -266,8 +266,8 @@ describe("Agent", () => {
     });
   });
 
-  describe("unregisterTool", () => {
-    it("should unregister an existing tool", () => {
+  describe("unregisterTool", function () {
+    it("should unregister an existing tool", function () {
       agent.registerTool({
         name: "remove_me",
         description: "To be removed",
@@ -281,12 +281,12 @@ describe("Agent", () => {
       assert.isFalse(agent.hasTool("remove_me"));
     });
 
-    it("should return false for non-existent tool", () => {
+    it("should return false for non-existent tool", function () {
       const removed = agent.unregisterTool("nonexistent");
       assert.isFalse(removed);
     });
 
-    it("should allow re-registering after unregister", () => {
+    it("should allow re-registering after unregister", function () {
       agent.registerTool({
         name: "cycle_tool",
         description: "Test cycling",
@@ -308,13 +308,16 @@ describe("Agent", () => {
     });
   });
 
-  describe("handleToolCalls", () => {
-    it("should execute a tool call", async () => {
+  describe("handleToolCalls", function () {
+    it("should execute a tool call", async function () {
       const mockTool: ToolDefinition = {
         name: "test_tool",
         description: "Test",
         parameters: [],
-        handler: async (args) => ({ id: "1", result: `Called with ${JSON.stringify(args)}` }),
+        handler: async (args) => ({
+          id: "1",
+          result: `Called with ${JSON.stringify(args)}`,
+        }),
       };
 
       agent.registerTool(mockTool);
@@ -332,7 +335,7 @@ describe("Agent", () => {
       assert.include(results[0].result as string, "value");
     });
 
-    it("should return error for unknown tool", async () => {
+    it("should return error for unknown tool", async function () {
       const toolCalls: ToolCall[] = [
         { id: "call_unknown", name: "nonexistent_tool", arguments: {} },
       ];
@@ -347,7 +350,7 @@ describe("Agent", () => {
       assert.include(results[0].error, "nonexistent_tool");
     });
 
-    it("should handle multiple tool calls", async () => {
+    it("should handle multiple tool calls", async function () {
       const tool1: ToolDefinition = {
         name: "multi_1",
         description: "First multi",
@@ -382,7 +385,7 @@ describe("Agent", () => {
       assert.equal(results[1].result, "two");
     });
 
-    it("should handle tool handler throwing an error", async () => {
+    it("should handle tool handler throwing an error", async function () {
       const failingTool: ToolDefinition = {
         name: "failing",
         description: "Fails",
@@ -407,7 +410,7 @@ describe("Agent", () => {
       assert.include(results[0].error, "Handler failed");
     });
 
-    it("should handle mixed success and error results", async () => {
+    it("should handle mixed success and error results", async function () {
       const goodTool: ToolDefinition = {
         name: "good",
         description: "Works",
@@ -442,12 +445,12 @@ describe("Agent", () => {
       assert.equal(results[2].result, "success");
     });
 
-    it("should handle empty tool calls array", async () => {
+    it("should handle empty tool calls array", async function () {
       const results = await agent.handleToolCalls([], new Map());
       assert.lengthOf(results, 0);
     });
 
-    it("should pass context to tool handler", async () => {
+    it("should pass context to tool handler", async function () {
       let receivedContext: any;
       const contextTool: ToolDefinition = {
         name: "context_tool",
@@ -474,12 +477,12 @@ describe("Agent", () => {
     });
   });
 
-  describe("run", () => {
-    it("should be a method that exists", () => {
+  describe("run", function () {
+    it("should be a method that exists", function () {
       assert.isFunction((agent as any).run);
     });
 
-    it("should return text response when no tool calls", async () => {
+    it("should return text response when no tool calls", async function () {
       agent.mockLLMResponse = {
         content: "Hello! How can I help you?",
       };
@@ -494,9 +497,9 @@ describe("Agent", () => {
       assert.isUndefined(response.toolCalls);
     });
 
-    it("should execute tool and return result", async () => {
+    it("should execute tool and return result", async function () {
       // First call returns a tool call, second call returns final response
-      let callCount = 0;
+      const callCount = 0;
       (agent as any).mockLLMResponse = {
         content: "Let me search for that.",
         toolCalls: [{ id: "call_1", name: "search", arguments: { q: "test" } }],
@@ -512,7 +515,7 @@ describe("Agent", () => {
 
       // Override to return final response after tool execution
       const originalCallLLM = (agent as any).mockLLMResponse;
-      let afterToolCall = false;
+      const afterToolCall = false;
       (agent as any)._testOverride = function () {
         return {
           content: "Found 5 results for 'test'.",
@@ -530,7 +533,7 @@ describe("Agent", () => {
       // Tool calls should be returned as part of response flow
     });
 
-    it("should include system prompt in request", async () => {
+    it("should include system prompt in request", async function () {
       agent.mockLLMResponse = {
         content: "System prompt was set.",
       };
@@ -544,7 +547,7 @@ describe("Agent", () => {
       assert.isTrue(true); // If we get here, the agent handled the request
     });
 
-    it("should merge registered tools with request tools", async () => {
+    it("should merge registered tools with request tools", async function () {
       const registeredTool: ToolDefinition = {
         name: "registered_tool",
         description: "Registered",
@@ -574,7 +577,7 @@ describe("Agent", () => {
       assert.isTrue(agent.hasTool("registered_tool"));
     });
 
-    it("should return error from LLM call", async () => {
+    it("should return error from LLM call", async function () {
       agent.mockLLMResponse = {
         content: "",
         error: "API key invalid",
@@ -589,7 +592,7 @@ describe("Agent", () => {
       assert.equal(response.content, "");
     });
 
-    it("should handle max iterations exceeded", async () => {
+    it("should handle max iterations exceeded", async function () {
       const loopingAgent = new TestableAgent({
         systemPrompt: "Loop",
         maxIterations: 2,
@@ -619,12 +622,12 @@ describe("Agent", () => {
     });
   });
 
-  describe("process", () => {
-    it("should be a method that exists", () => {
+  describe("process", function () {
+    it("should be a method that exists", function () {
       assert.isFunction((agent as any).process);
     });
 
-    it("should process request and return response", async () => {
+    it("should process request and return response", async function () {
       agent.mockLLMResponse = {
         content: "Processed successfully.",
       };
@@ -638,8 +641,8 @@ describe("Agent", () => {
     });
   });
 
-  describe("tool call chains", () => {
-    it("should handle sequential tool calls", async () => {
+  describe("tool call chains", function () {
+    it("should handle sequential tool calls", async function () {
       const tool1: ToolDefinition = {
         name: "step_one",
         description: "First step",
@@ -663,7 +666,9 @@ describe("Agent", () => {
         if (callNumber === 1) {
           return {
             content: "Starting chain...",
-            toolCalls: [{ id: "c1", name: "step_one", arguments: { value: "start" } }],
+            toolCalls: [
+              { id: "c1", name: "step_one", arguments: { value: "start" } },
+            ],
           };
         }
         return {
@@ -680,8 +685,8 @@ describe("Agent", () => {
     });
   });
 
-  describe("edge cases", () => {
-    it("should handle empty messages array", async () => {
+  describe("edge cases", function () {
+    it("should handle empty messages array", async function () {
       agent.mockLLMResponse = {
         content: "Empty request handled.",
       };
@@ -694,7 +699,7 @@ describe("Agent", () => {
       assert.equal(response.content, "Empty request handled.");
     });
 
-    it("should handle request with no tools available", async () => {
+    it("should handle request with no tools available", async function () {
       agent.mockLLMResponse = {
         content: "No tools, just text response.",
       };
@@ -707,7 +712,7 @@ describe("Agent", () => {
       assert.equal(response.content, "No tools, just text response.");
     });
 
-    it("should handle context in request", async () => {
+    it("should handle context in request", async function () {
       agent.mockLLMResponse = {
         content: "Context received.",
       };
