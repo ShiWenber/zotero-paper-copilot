@@ -12,10 +12,13 @@ import {
   ToolHandler,
   ToolResult,
 } from "./types";
+import { LLMManager, LLMProvider, StreamingCallback } from "../llm";
 
 export interface AgentConfig {
   systemPrompt?: string;
   maxIterations?: number;
+  provider?: LLMProvider;
+  streamingCallback?: StreamingCallback;
 }
 
 const DEFAULT_MAX_ITERATIONS = 10;
@@ -23,19 +26,31 @@ const DEFAULT_MAX_ITERATIONS = 10;
 /**
  * Agent runtime class.
  * Manages messages, tools, and orchestrates the agent loop.
- * LLM integration is delegated to callLLM() which should be implemented
- * by a concrete subclass or injected via config.
+ * LLM integration is delegated to callLLM() which uses LLMManager.
  */
 export class Agent {
   private tools: Map<string, ToolDefinition> = new Map();
   private systemPrompt: string;
   private maxIterations: number;
+  private llmManager: LLMManager;
+  private streamingCallback?: StreamingCallback;
 
   constructor(config: AgentConfig = {}) {
     this.systemPrompt =
       config.systemPrompt ??
       "You are a helpful AI assistant for Zotero Paper Copilot.";
     this.maxIterations = config.maxIterations ?? DEFAULT_MAX_ITERATIONS;
+    this.llmManager = LLMManager.getInstance();
+    this.streamingCallback = config.streamingCallback;
+
+    // If a provider is specified, switch to it
+    if (config.provider) {
+      try {
+        this.llmManager.setProvider(config.provider);
+      } catch {
+        // Provider not registered yet, will use default
+      }
+    }
   }
 
   /**
@@ -202,24 +217,35 @@ export class Agent {
   }
 
   /**
-   * Call the underlying LLM.
-   * This is a placeholder that should be overridden or injected.
-   * Returns a partial AgentResponse with content and optional toolCalls.
-   *
-   * Override this method to integrate with specific LLM providers
-   * (OpenAI, Anthropic, local models, etc.).
+   * Call the underlying LLM using LLMManager.
+   * Returns a response with content and optional toolCalls.
    */
   protected async callLLM(
     messages: AgentMessage[],
     tools: ToolDefinition[],
-    context?: Record<string, any>,
+    _context?: Record<string, any>,
   ): Promise<{ content: string; toolCalls?: ToolCall[]; error?: string }> {
-    // Placeholder implementation
-    // In production, this would call an actual LLM API
-    console.warn(
-      "[Agent] callLLM() not implemented. Returning empty response.",
-    );
-    return { content: "" };
+    try {
+      const response = await this.llmManager.complete(
+        messages,
+        tools,
+        this.streamingCallback,
+      );
+
+      // Convert LLMResponse to Agent callLLM return type
+      return {
+        content: response.content,
+        toolCalls: response.toolCalls,
+        error: response.error,
+      };
+    } catch (err: any) {
+      const errorMessage = err?.message ?? String(err);
+      console.error("[Agent] LLM call failed:", errorMessage);
+      return {
+        content: "",
+        error: `LLM call failed: ${errorMessage}`,
+      };
+    }
   }
 }
 
