@@ -63,28 +63,30 @@ The plugin is built on a modular Agent Runtime system:
 ### 📚 Available Tools
 
 #### Read Tools
-| Tool | Description |
-|------|-------------|
-| `get_item` | Get metadata for a specific Zotero item |
-| `get_selected_items` | Get currently selected items |
-| `get_pdf_text` | Extract text from PDF (full or page range) |
-| `search_items` | Search Zotero library |
+
+| Tool                 | Description                                |
+| -------------------- | ------------------------------------------ |
+| `get_item`           | Get metadata for a specific Zotero item    |
+| `get_selected_items` | Get currently selected items               |
+| `get_pdf_text`       | Extract text from PDF (full or page range) |
+| `search_items`       | Search Zotero library                      |
 
 #### Write Tools
-| Tool | Description |
-|------|-------------|
-| `add_note` | Add a note to an item |
-| `update_tags` | Add/remove tags from items |
-| `create_highlight` | Create PDF highlight annotation |
-| `sync_notes` | Sync chat as note to Zotero item |
+
+| Tool               | Description                      |
+| ------------------ | -------------------------------- |
+| `add_note`         | Add a note to an item            |
+| `update_tags`      | Add/remove tags from items       |
+| `create_highlight` | Create PDF highlight annotation  |
+| `sync_notes`       | Sync chat as note to Zotero item |
 
 ### ⚡ Actions
 
-| Action | Description |
-|--------|-------------|
-| `audit_items` | Check metadata completeness |
-| `auto_tag_items` | LLM-powered auto-tagging |
-| `sync_metadata` | Sync from DOI/arXiv/ISBN |
+| Action           | Description                 |
+| ---------------- | --------------------------- |
+| `audit_items`    | Check metadata completeness |
+| `auto_tag_items` | LLM-powered auto-tagging    |
+| `sync_metadata`  | Sync from DOI/arXiv/ISBN    |
 
 ## 🚀 Installation
 
@@ -139,14 +141,14 @@ npm run test
 
 ### Preferences Reference
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `API Provider` | LLM service to use | OpenAI |
-| `API Key` | Your API key | - |
-| `Model` | LLM model to use | gpt-4o-mini |
-| `Temperature` | Response creativity | 0.7 |
-| `Max Tokens` | Response length limit | 2048 |
-| `Sidebar Width` | Panel width in pixels | 400 |
+| Setting         | Description           | Default     |
+| --------------- | --------------------- | ----------- |
+| `API Provider`  | LLM service to use    | OpenAI      |
+| `API Key`       | Your API key          | -           |
+| `Model`         | LLM model to use      | gpt-4o-mini |
+| `Temperature`   | Response creativity   | 0.7         |
+| `Max Tokens`    | Response length limit | 2048        |
+| `Sidebar Width` | Panel width in pixels | 400         |
 
 ## 📖 Usage
 
