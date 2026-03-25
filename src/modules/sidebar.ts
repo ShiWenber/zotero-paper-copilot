@@ -13,7 +13,7 @@ export class SidebarUI {
    * Create sidebar using ztoolkit.UI
    */
   public static create(win: Window): void {
-    this.remove();
+    this.remove(win);
 
     const doc = win.document;
 
@@ -75,12 +75,13 @@ export class SidebarUI {
     sidebar.appendChild(content);
     sidebar.appendChild(chatArea);
     sidebar.appendChild(footer);
+    if (!doc.body) return;
     doc.body.appendChild(sidebar);
 
     // Event listeners
     doc
       .getElementById("sidebar-close-btn")
-      ?.addEventListener("click", () => this.remove());
+      ?.addEventListener("click", () => this.remove(win));
     doc
       .getElementById("btn-summarize")
       ?.addEventListener("click", () => this.showSummarize(win));
@@ -95,13 +96,13 @@ export class SidebarUI {
   }
 
   /**
-   * Remove sidebar
+   * Remove sidebar from a specific window
    */
-  public static remove(): void {
-    const sidebar = document.getElementById(this.sidebarId);
+  public static remove(win: Window): void {
+    const sidebar = win.document.getElementById(this.sidebarId);
     if (sidebar) {
       sidebar.remove();
-      if (typeof ztoolkit !== "undefined") {
+      if (typeof ztoolkit !== "undefined" && ztoolkit) {
         ztoolkit.log("Paper Copilot sidebar removed");
       }
     }
@@ -111,9 +112,9 @@ export class SidebarUI {
    * Toggle sidebar
    */
   public static toggle(win: Window): void {
-    const sidebar = document.getElementById(this.sidebarId);
+    const sidebar = win.document.getElementById(this.sidebarId);
     if (sidebar) {
-      this.remove();
+      this.remove(win);
     } else {
       this.create(win);
     }
@@ -123,19 +124,31 @@ export class SidebarUI {
    * Show summarize action
    */
   private static showSummarize(win: Window): void {
-    this.showMessage(
-      win,
-      "📝 Generating paper summary...<br><br>This feature requires LLM API integration.",
-    );
+    const integrator = (win as any)["sidebarAgentIntegrator"];
+    if (integrator) {
+      integrator.handleSummarize();
+    } else {
+      this.showMessage(win, "Agent not initialized. Please reload the plugin.");
+    }
   }
 
   /**
    * Show translate action
    */
   private static showTranslate(win: Window): void {
+    // For translate without selection, show instructions
     this.showMessage(
       win,
-      "🌐 Translation feature<br><br>Select text in PDF to translate.",
+      `<div style="text-align: left;">
+        <div style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">🌐 Translate Text</div>
+        <div style="font-size: 13px; color: #555; line-height: 1.6;">
+          <p>To translate text:</p>
+          <ol style="padding-left: 20px; margin: 8px 0;">
+            <li>Select text in the PDF</li>
+            <li>Click "Translate" button</li>
+          </ol>
+        </div>
+      </div>`,
     );
   }
 
@@ -231,13 +244,29 @@ export class SidebarUI {
       win.document
         .getElementById("btn-ask-about-selection")
         ?.addEventListener("click", () => {
-          this.showMessage(win, "🤖 AI Question feature coming soon!");
+          const integrator = (win as any)["sidebarAgentIntegrator"];
+          if (integrator) {
+            integrator.handleSelectedText(text, "ask");
+          } else {
+            this.showMessage(
+              win,
+              "Agent not initialized. Please reload the plugin.",
+            );
+          }
         });
 
       win.document
         .getElementById("btn-translate-selection")
         ?.addEventListener("click", () => {
-          this.showMessage(win, "🌐 Translation feature coming soon!");
+          const integrator = (win as any)["sidebarAgentIntegrator"];
+          if (integrator) {
+            integrator.handleSelectedText(text, "translate");
+          } else {
+            this.showMessage(
+              win,
+              "Agent not initialized. Please reload the plugin.",
+            );
+          }
         });
     }
 
