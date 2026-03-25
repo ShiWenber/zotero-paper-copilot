@@ -7,7 +7,7 @@ import { Agent } from "../agent";
 import { ZoteroGateway, PdfService } from "../services";
 import { ToolDefinition, AgentMessage } from "../agent/types";
 import { SidebarUI } from "../modules/sidebar";
-import { loadAllTools } from "../tools";
+import { loadAllTools, getAllTools } from "../tools";
 
 /**
  * MockAgent extends Agent with a placeholder LLM implementation
@@ -46,7 +46,7 @@ class MockAgent extends Agent {
 }
 
 /**
- * SidebarAgentIntegrator
+ * Sidebar Agent Integrator
  * Bridges the SidebarUI with the Agent runtime.
  * Handles user actions and displays responses in the sidebar.
  */
@@ -55,6 +55,11 @@ export class SidebarAgentIntegrator {
   private zoteroGateway: ZoteroGateway;
   private pdfService: PdfService;
   private win: Window;
+  private chatHistory: Array<{
+    role: "user" | "assistant";
+    content: string;
+    timestamp: number;
+  }> = [];
 
   constructor(win: Window) {
     this.win = win;
@@ -74,7 +79,6 @@ export class SidebarAgentIntegrator {
     loadAllTools();
 
     // Get all loaded tools and register with agent
-    const { getAllTools } = require("../tools");
     const tools = getAllTools();
 
     for (const tool of tools) {
@@ -105,20 +109,142 @@ export class SidebarAgentIntegrator {
   }
 
   /**
+   * Get chat history for sync_notes tool
+   */
+  getChatHistory(): Array<{
+    role: "user" | "assistant";
+    content: string;
+    timestamp?: number;
+  }> {
+    return this.chatHistory;
+  }
+
+  /**
+   * Sync current chat conversation as a note to the selected Zotero item
+   */
+  async syncNotes(): Promise<void> {
+    if (this.chatHistory.length === 0) {
+      SidebarUI.showMessage(
+        this.win,
+        `<div style="text-align: center; color: #dc3545;">
+          <div style="font-size: 20px; margin-bottom: 8px;">⚠️</div>
+          <div>No conversation to sync. Start chatting first!</div>
+        </div>`,
+      );
+      return;
+    }
+
+    SidebarUI.showMessage(this.win, "Syncing conversation as note...");
+
+    try {
+      // Get selected item
+      const items = this.zoteroGateway.getSelectedItems();
+      const item = items.length > 0 ? items[0] : null;
+
+      if (!item) {
+        SidebarUI.showMessage(
+          this.win,
+          `<div style="text-align: center; color: #dc3545;">
+            <div style="font-size: 20px; margin-bottom: 8px;">⚠️</div>
+            <div>No Zotero item selected. Please select an item first.</div>
+          </div>`,
+        );
+        return;
+      }
+
+      // Format chat history as HTML note
+      const timestamp = new Date().toLocaleString();
+      let noteHtml = `<h3>Chat Note - ${timestamp}</h3>`;
+      noteHtml += `<p><em>Synced from Paper Copilot</em></p><hr>`;
+      noteHtml += `<div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif;">`;
+
+      for (const msg of this.chatHistory) {
+        const roleLabel = msg.role === "user" ? "You" : "Paper Copilot";
+        const roleColor = msg.role === "user" ? "#0066cc" : "#28a745";
+        const bgColor = msg.role === "user" ? "#e3f2fd" : "#f5f5f5";
+
+        noteHtml += `<div style="margin-bottom: 12px; padding: 8px 12px; background: ${bgColor}; border-radius: 6px;">`;
+        noteHtml += `<strong style="color: ${roleColor};">${roleLabel}</strong>`;
+        if (msg.timestamp) {
+          const time = new Date(msg.timestamp).toLocaleTimeString();
+          noteHtml += ` <span style="color: #999; font-size: 11px;">${time}</span>`;
+        }
+        noteHtml += `<br><span style="font-size: 14px; line-height: 1.5;">${msg.content}</span>`;
+        noteHtml += `</div>`;
+      }
+
+      noteHtml += `</div>`;
+
+      // Add note via Zotero gateway
+      const noteId = await this.zoteroGateway.addNote(item, noteHtml);
+
+      if (noteId === -1) {
+        SidebarUI.showMessage(
+          this.win,
+          `<div style="text-align: center; color: #dc3545;">
+            <div style="font-size: 20px; margin-bottom: 8px;">⚠️</div>
+            <div>Failed to create note. Please try again.</div>
+          </div>`,
+        );
+        return;
+      }
+
+      this.zoteroGateway.refreshView();
+
+      SidebarUI.showMessage(
+        this.win,
+        `<div style="text-align: center; color: #28a745;">
+          <div style="font-size: 20px; margin-bottom: 8px;">✅</div>
+          <div>Conversation saved as note!</div>
+          <div style="font-size: 12px; color: #666; margin-top: 4px;">${this.chatHistory.length} messages synced</div>
+        </div>`,
+      );
+    } catch (err: any) {
+      SidebarUI.showMessage(
+        this.win,
+        `<div style="text-align: center; color: #dc3545;">
+          <div style="font-size: 20px; margin-bottom: 8px;">⚠️</div>
+          <div>Error: ${err?.message ?? "Unknown error"}</div>
+        </div>`,
+      );
+    }
+  }
+
+  /**
    * Handle "Ask AI" button click
    */
   async handleAskAI(question: string): Promise<void> {
     this.showLoading("🤖 Thinking...");
 
     try {
+      // Add user message to chat history
+      this.chatHistory.push({
+        role: "user",
+        content: question,
+        timestamp: Date.now(),
+      });
+
+      // Display user message in chat
+      SidebarUI.addChatMessage(this.win, "user", question);
+
       const response = await this.agent.process({
-        messages: [{ role: "user", content: question, timestamp: Date.now() }],
+        messages: this.chatHistory.map((m) => ({
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp,
+        })),
         context: this.getContext(),
       });
 
       if (response.error) {
         this.showError(`Error: ${response.error}`);
       } else {
+        // Add assistant response to chat history
+        this.chatHistory.push({
+          role: "assistant",
+          content: response.content,
+          timestamp: Date.now(),
+        });
         this.displayResponse(response.content);
       }
     } catch (err: any) {
@@ -158,16 +284,30 @@ export class SidebarAgentIntegrator {
           ? `Please summarize the following paper content:\n\n${pdfText}`
           : "Please summarize this paper.");
 
+      // Add to chat history
+      this.chatHistory.push({
+        role: "user",
+        content: userMessage,
+        timestamp: Date.now(),
+      });
+
       const response = await this.agent.process({
-        messages: [
-          { role: "user", content: userMessage, timestamp: Date.now() },
-        ],
+        messages: this.chatHistory.map((m) => ({
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp,
+        })),
         context: this.getContext(),
       });
 
       if (response.error) {
         this.showError(`Summarization error: ${response.error}`);
       } else {
+        this.chatHistory.push({
+          role: "assistant",
+          content: response.content,
+          timestamp: Date.now(),
+        });
         this.displayResponse(response.content);
       }
     } catch (err: any) {
@@ -189,20 +329,30 @@ export class SidebarAgentIntegrator {
     this.showLoading("🌐 Translating...");
 
     try {
+      const translateMsg = `Translate the following text to English (or the user's preferred language):\n\n"${text}"`;
+      this.chatHistory.push({
+        role: "user",
+        content: translateMsg,
+        timestamp: Date.now(),
+      });
+
       const response = await this.agent.process({
-        messages: [
-          {
-            role: "user",
-            content: `Translate the following text to English (or the user's preferred language):\n\n"${text}"`,
-            timestamp: Date.now(),
-          },
-        ],
+        messages: this.chatHistory.map((m) => ({
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp,
+        })),
         context: this.getContext(),
       });
 
       if (response.error) {
         this.showError(`Translation error: ${response.error}`);
       } else {
+        this.chatHistory.push({
+          role: "assistant",
+          content: response.content,
+          timestamp: Date.now(),
+        });
         this.displayResponse(response.content);
       }
     } catch (err: any) {
@@ -219,7 +369,6 @@ export class SidebarAgentIntegrator {
   ): Promise<void> {
     if (action === "ask") {
       // For "ask", use the text as context for a follow-up question
-      // The user will need to type a follow-up in the chat
       SidebarUI.showMessage(
         this.win,
         `<div style="text-align: left;">
@@ -231,7 +380,6 @@ export class SidebarAgentIntegrator {
         </div>`,
       );
 
-      // Actually, let's just call handleAskAI with a default question
       await this.handleAskAI(
         `Please explain or elaborate on the following text from this paper:\n\n"${text}"`,
       );
@@ -243,16 +391,15 @@ export class SidebarAgentIntegrator {
   /**
    * Display response in sidebar using chat UI
    */
-  private displayResponse(html: string): void {
+  private displayResponse(content: string): void {
     // Use SidebarUI's addChatMessage for assistant response
-    SidebarUI.addChatMessage(this.win, "assistant", html);
+    SidebarUI.addChatMessage(this.win, "assistant", content);
   }
 
   /**
    * Display loading state in sidebar
    */
   private showLoading(message: string): void {
-    // Show loading message in content area
     SidebarUI.showMessage(this.win, message);
   }
 

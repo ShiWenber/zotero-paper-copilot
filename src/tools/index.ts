@@ -95,5 +95,11 @@ export {
   GetSelectedItemsTool,
   GetPdfTextTool,
   SearchItemsTool,
+  ScreenshotTool,
 } from "./read";
-export { AddNoteTool, UpdateTagsTool, CreateHighlightTool } from "./write";
+export {
+  AddNoteTool,
+  UpdateTagsTool,
+  CreateHighlightTool,
+  SyncNotesTool,
+} from "./write";

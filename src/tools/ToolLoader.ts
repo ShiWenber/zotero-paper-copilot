@@ -9,8 +9,14 @@ import {
   GetSelectedItemsTool,
   GetPdfTextTool,
   SearchItemsTool,
+  ScreenshotTool,
 } from "./read";
-import { AddNoteTool, UpdateTagsTool, CreateHighlightTool } from "./write";
+import {
+  AddNoteTool,
+  UpdateTagsTool,
+  CreateHighlightTool,
+  SyncNotesTool,
+} from "./write";
 
 /**
  * Load and register all available tools with the registry
@@ -21,11 +27,13 @@ export function loadAllTools(): void {
   toolRegistry.register(new GetSelectedItemsTool());
   toolRegistry.register(new GetPdfTextTool());
   toolRegistry.register(new SearchItemsTool());
+  toolRegistry.register(new ScreenshotTool());
 
   // Register write tools
   toolRegistry.register(new AddNoteTool());
   toolRegistry.register(new UpdateTagsTool());
   toolRegistry.register(new CreateHighlightTool());
+  toolRegistry.register(new SyncNotesTool());
 }
 
 /**
