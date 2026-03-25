@@ -132,7 +132,9 @@ describe("OpenAIAdapter", function () {
         apiKey: "",
       });
 
-      const result = await adapter.complete([{ role: "user", content: "Hello" }]);
+      const result = await adapter.complete([
+        { role: "user", content: "Hello" },
+      ]);
 
       assert.isNotNull(result.error);
       assert.equal(result.finishReason, "error");
@@ -144,10 +146,14 @@ describe("OpenAIAdapter", function () {
         baseUrl: "https://api.openai.com/v1",
       });
 
-      const result = await adapter.complete([{ role: "user", content: "Hello" }]);
+      const result = await adapter.complete([
+        { role: "user", content: "Hello" },
+      ]);
 
       // Should return error (network failure or auth error)
-      assert.isTrue(result.finishReason === "error" || result.error !== undefined);
+      assert.isTrue(
+        result.finishReason === "error" || result.error !== undefined,
+      );
     });
 
     it("should handle messages array", async function () {
@@ -174,7 +180,9 @@ describe("OpenAIAdapter", function () {
         apiKey: "sk-test",
       });
 
-      const result = await adapter.complete([{ role: "user", content: "Hello" }]);
+      const result = await adapter.complete([
+        { role: "user", content: "Hello" },
+      ]);
 
       assert.isDefined(result);
     });
@@ -237,7 +245,9 @@ describe("OpenAIAdapter", function () {
         apiKey: "sk-test",
       });
 
-      const result = await adapter.complete([{ role: "user", content: "Say hi" }]);
+      const result = await adapter.complete([
+        { role: "user", content: "Say hi" },
+      ]);
 
       // If API call succeeds, check finish reason
       if (!result.error) {
@@ -277,9 +287,13 @@ describe("OpenAIAdapter", function () {
         baseUrl: "https://non-existent-domain-12345.com",
       });
 
-      const result = await adapter.complete([{ role: "user", content: "Hello" }]);
+      const result = await adapter.complete([
+        { role: "user", content: "Hello" },
+      ]);
 
-      assert.isTrue(result.finishReason === "error" || result.error !== undefined);
+      assert.isTrue(
+        result.finishReason === "error" || result.error !== undefined,
+      );
     });
 
     it("should return error response on invalid baseUrl", async function () {
@@ -288,9 +302,13 @@ describe("OpenAIAdapter", function () {
         baseUrl: "not-a-valid-url",
       });
 
-      const result = await adapter.complete([{ role: "user", content: "Hello" }]);
+      const result = await adapter.complete([
+        { role: "user", content: "Hello" },
+      ]);
 
-      assert.isTrue(result.finishReason === "error" || result.error !== undefined);
+      assert.isTrue(
+        result.finishReason === "error" || result.error !== undefined,
+      );
     });
   });
 });
