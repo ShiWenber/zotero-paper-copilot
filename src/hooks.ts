@@ -10,6 +10,8 @@ import { registerPrefsScripts } from "./modules/preferenceScript";
 import { createZToolkit } from "./utils/ztoolkit";
 import { SidebarUI } from "./modules/sidebar";
 import { initPDFSelection } from "./modules/pdf-selection";
+import { SidebarAgentIntegrator } from "./integration";
+import { loadAllTools } from "./tools";
 
 async function onStartup() {
   await Promise.all([
@@ -70,19 +72,48 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
     text: `[30%] ${getString("startup-begin")}`,
   });
 
-  UIExampleFactory.registerStyleSheet(win);
+  // Wrap example factory calls in try-catch so failures don't block progress
+  try {
+    UIExampleFactory.registerStyleSheet(win);
+  } catch (e) {
+    ztoolkit.log("Error registering stylesheet:", e);
+  }
 
-  UIExampleFactory.registerRightClickMenuItem();
+  try {
+    UIExampleFactory.registerRightClickMenuItem();
+  } catch (e) {
+    ztoolkit.log("Error registering right-click menu item:", e);
+  }
 
-  UIExampleFactory.registerRightClickMenuPopup(win);
+  try {
+    UIExampleFactory.registerRightClickMenuPopup(win);
+  } catch (e) {
+    ztoolkit.log("Error registering right-click menu popup:", e);
+  }
 
-  UIExampleFactory.registerWindowMenuWithSeparator();
+  try {
+    UIExampleFactory.registerWindowMenuWithSeparator();
+  } catch (e) {
+    ztoolkit.log("Error registering window menu:", e);
+  }
 
-  PromptExampleFactory.registerNormalCommandExample();
+  try {
+    PromptExampleFactory.registerNormalCommandExample();
+  } catch (e) {
+    ztoolkit.log("Error registering normal command:", e);
+  }
 
-  PromptExampleFactory.registerAnonymousCommandExample(win);
+  try {
+    PromptExampleFactory.registerAnonymousCommandExample(win);
+  } catch (e) {
+    ztoolkit.log("Error registering anonymous command:", e);
+  }
 
-  PromptExampleFactory.registerConditionalCommandExample();
+  try {
+    PromptExampleFactory.registerConditionalCommandExample();
+  } catch (e) {
+    ztoolkit.log("Error registering conditional command:", e);
+  }
 
   await Zotero.Promise.delay(1000);
 
@@ -94,6 +125,13 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
 
   // Register Paper Copilot Sidebar
   SidebarUI.create(win);
+
+  // Initialize Agent Integrator
+  const integrator = new SidebarAgentIntegrator(win);
+  integrator.initialize();
+  addon.data.agentIntegrator = integrator;
+  // Also store on window for sidebar access (avoids circular deps)
+  (win as any)["sidebarAgentIntegrator"] = integrator;
 
   // Initialize PDF text selection listener
   initPDFSelection(win);
@@ -112,18 +150,29 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
     toolsMenu.appendChild(menuItem);
   }
 
-  addon.hooks.onDialogEvents("dialogExample");
+  // Wrap dialog creation in try-catch
+  try {
+    addon.hooks.onDialogEvents("dialogExample");
+  } catch (e) {
+    ztoolkit.log("Error creating dialog:", e);
+  }
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {
-  ztoolkit.unregisterAll();
-  SidebarUI.remove();
+  // Check if addon and ztoolkit exist before using them
+  if (addon?.data?.ztoolkit) {
+    addon.data.ztoolkit.unregisterAll();
+  }
+  SidebarUI.remove(win);
   addon.data.dialog?.window?.close();
 }
 
 function onShutdown(): void {
-  ztoolkit.unregisterAll();
-  SidebarUI.remove();
+  // Check if addon and ztoolkit exist before using them
+  if (addon?.data?.ztoolkit) {
+    addon.data.ztoolkit.unregisterAll();
+  }
+  // Note: SidebarUI.remove() needs a window - skip in shutdown context
   addon.data.dialog?.window?.close();
   // Remove addon object
   addon.data.alive = false;
@@ -142,7 +191,7 @@ async function onNotify(
   extraData: { [key: string]: any },
 ) {
   // You can add your code to the corresponding notify type
-  ztoolkit.log("notify", event, type, ids, extraData);
+  addon.data.ztoolkit?.log("notify", event, type, ids, extraData);
   if (
     event == "select" &&
     type == "tab" &&
