@@ -135,7 +135,7 @@ export class AutoTagAction extends BaseAction {
     tagStyle: TagStyle,
     context: ActionContext,
   ): Promise<ItemTagResult> {
-    const { services, toolRegistry } = context;
+    const { services, toolRegistry, llmManager } = context;
 
     // Build prompt for tag suggestion
     const prompt = this.buildTagPrompt(metadata, numTags, tagStyle);

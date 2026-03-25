@@ -20,7 +20,7 @@ export interface ActionContext {
     zotero: ZoteroGateway;
     pdf: PdfService;
   };
-  toolRegistry: ToolRegistry;
+  toolRegistry: typeof toolRegistry;
 }
 
 /**
