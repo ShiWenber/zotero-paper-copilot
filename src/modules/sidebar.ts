@@ -202,8 +202,12 @@ export class SidebarUI {
     }
 
     // Hide chat area and header
-    const chatArea = win.document.getElementById("paper-copilot-chat-area") as HTMLElement | null;
-    const chatHeader = win.document.getElementById("paper-copilot-chat-header") as HTMLElement | null;
+    const chatArea = win.document.getElementById(
+      "paper-copilot-chat-area",
+    ) as HTMLElement | null;
+    const chatHeader = win.document.getElementById(
+      "paper-copilot-chat-header",
+    ) as HTMLElement | null;
     if (chatArea) {
       chatArea.style.display = "none";
     }
@@ -231,8 +235,12 @@ export class SidebarUI {
     role: "user" | "assistant",
     content: string,
   ): void {
-    const chatArea = win.document.getElementById("paper-copilot-chat-area") as HTMLElement | null;
-    const chatHeader = win.document.getElementById("paper-copilot-chat-header") as HTMLElement | null;
+    const chatArea = win.document.getElementById(
+      "paper-copilot-chat-area",
+    ) as HTMLElement | null;
+    const chatHeader = win.document.getElementById(
+      "paper-copilot-chat-header",
+    ) as HTMLElement | null;
     const contentArea = win.document.querySelector(
       "#" + this.sidebarId + " > div:nth-child(2)",
     );
@@ -434,8 +442,12 @@ export class SidebarUI {
         });
     }
 
-    const chatArea = win.document.getElementById("paper-copilot-chat-area") as HTMLElement | null;
-    const chatHeader = win.document.getElementById("paper-copilot-chat-header") as HTMLElement | null;
+    const chatArea = win.document.getElementById(
+      "paper-copilot-chat-area",
+    ) as HTMLElement | null;
+    const chatHeader = win.document.getElementById(
+      "paper-copilot-chat-header",
+    ) as HTMLElement | null;
     if (chatArea) {
       chatArea.style.display = "none";
     }
