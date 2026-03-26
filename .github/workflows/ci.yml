@@ -4,9 +4,15 @@ on:
   push:
     branches:
       - main
+      - develop
   pull_request:
     branches:
       - main
+      - develop
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint:
@@ -16,6 +22,12 @@ jobs:
     steps:
       - name: Setup JS
         uses: zotero-plugin-dev/workflows/setup-js@main
+      - name: Cache tsc
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/tsbuildinfo
+          key: tsc-${{ runner.os }}-${{ hashFiles('src/**/*.ts', 'tsconfig.json') }}
+          restore-keys: tsc-${{ runner.os }}-
       - name: Run Lint
         run: npm run lint:check
 
@@ -26,6 +38,12 @@ jobs:
     steps:
       - name: Setup JS
         uses: zotero-plugin-dev/workflows/setup-js@main
+      - name: Cache tsc
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/tsbuildinfo
+          key: tsc-${{ runner.os }}-${{ hashFiles('src/**/*.ts', 'tsconfig.json') }}
+          restore-keys: tsc-${{ runner.os }}-
       - name: Run Build
         run: npm run build
       - name: Upload build result
@@ -36,9 +54,14 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    needs:
-      - build
+    timeout-minutes: 10
     steps:
       - name: Setup JS
         uses: zotero-plugin-dev/workflows/setup-js@main
-      - run: npm run test
+      - name: Cache vitest
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/vitest
+          key: vitest-${{ runner.os }}-${{ hashFiles('src/**/*.ts', 'test/**/*.ts', 'vitest.config.ts') }}
+          restore-keys: vitest-${{ runner.os }}-
+      - run: npm run test -- --bail --no-color
