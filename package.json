@@ -41,7 +41,7 @@
     "@zotero-plugin/eslint-config": "^0.6.7",
     "chai": "^6.2.1",
     "diff": "^8.0.3",
-    "eslint": "^9.39.2",
+    "eslint": "^10.1.0",
     "mocha": "^11.7.5",
     "prettier": "^3.7.4",
     "serialize-javascript": "^7.0.4",
