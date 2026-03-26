@@ -64,4 +64,4 @@ jobs:
           path: node_modules/.cache/vitest
           key: vitest-${{ runner.os }}-${{ hashFiles('src/**/*.ts', 'test/**/*.ts', 'vitest.config.ts') }}
           restore-keys: vitest-${{ runner.os }}-
-      - run: npm run test -- --bail --no-color
+      - run: npm run test -- --bail=1 --no-color
