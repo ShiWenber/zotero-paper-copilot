@@ -8,11 +8,17 @@ function example(
   const original = descriptor.value;
   descriptor.value = function (...args: any) {
     try {
-      ztoolkit.log(`Calling example ${target.name}.${String(propertyKey)}`);
+      // Use optional chaining in case ztoolkit isn't initialized yet
+      addon.data.ztoolkit?.log(
+        `Calling example ${target.name}.${String(propertyKey)}`,
+      );
       return original.apply(this, args);
     } catch (e) {
-      ztoolkit.log(`Error in example ${target.name}.${String(propertyKey)}`, e);
-      throw e;
+      addon.data.ztoolkit?.log(
+        `Error in example ${target.name}.${String(propertyKey)}`,
+        e,
+      );
+      // Don't re-throw - allow plugin to continue even if optional features fail
     }
   };
   return descriptor;
@@ -139,19 +145,20 @@ export class UIExampleFactory {
   @example
   static registerRightClickMenuItem() {
     const menuIcon = `chrome://${addon.data.config.addonRef}/content/icons/favicon@0.5x.png`;
-    // item menuitem with icon
-    ztoolkit.Menu.register("item", {
+    // Note: ztoolkit.Menu is not available in toolkit v5.x, using (ztoolkit as any)
+    (ztoolkit as any).Menu?.register("item", {
       tag: "menuitem",
       id: "zotero-itemmenu-addontemplate-test",
       label: getString("menuitem-label"),
-      commandListener: (ev) => addon.hooks.onDialogEvents("dialogExample"),
+      commandListener: (ev: Event) =>
+        addon.hooks.onDialogEvents("dialogExample"),
       icon: menuIcon,
     });
   }
 
   @example
   static registerRightClickMenuPopup(win: Window) {
-    ztoolkit.Menu.register(
+    (ztoolkit as any).Menu?.register(
       "item",
       {
         tag: "menu",
@@ -173,11 +180,11 @@ export class UIExampleFactory {
 
   @example
   static registerWindowMenuWithSeparator() {
-    ztoolkit.Menu.register("menuFile", {
+    (ztoolkit as any).Menu?.register("menuFile", {
       tag: "menuseparator",
     });
     // menu->File menuitem
-    ztoolkit.Menu.register("menuFile", {
+    (ztoolkit as any).Menu?.register("menuFile", {
       tag: "menuitem",
       label: getString("menuitem-filemenulabel"),
       oncommand: "alert('Hello World! File Menuitem.')",

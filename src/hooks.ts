@@ -129,7 +129,7 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   // Initialize Agent Integrator
   const integrator = new SidebarAgentIntegrator(win);
   integrator.initialize();
-  addon.data.agentIntegrator = integrator;
+  (addon.data as any).agentIntegrator = integrator;
   // Also store on window for sidebar access (avoids circular deps)
   (win as any)["sidebarAgentIntegrator"] = integrator;
 

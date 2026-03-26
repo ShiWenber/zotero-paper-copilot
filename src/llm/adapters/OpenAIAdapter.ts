@@ -8,7 +8,7 @@ import {
   LLMResponse,
   StreamingCallback,
 } from "./base/BaseLLMAdapter";
-import { AgentMessage, ToolCall, ToolDefinition } from "../../../agent/types";
+import { AgentMessage, ToolCall, ToolDefinition } from "../../agent/types";
 
 export interface OpenAIAdapterConfig {
   apiKey: string;
@@ -125,7 +125,7 @@ export class OpenAIAdapter extends BaseLLMAdapter {
   private buildRequestBody(
     messages: AgentMessage[],
     tools?: ToolDefinition[],
-    stream?: boolean = false,
+    stream: boolean = false,
   ): object {
     const openAIMessages: OpenAIMessage[] = messages.map((msg) => ({
       role: msg.role,

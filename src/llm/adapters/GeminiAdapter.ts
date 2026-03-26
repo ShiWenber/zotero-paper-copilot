@@ -9,7 +9,7 @@
  */
 
 import { BaseLLMAdapter, LLMResponse } from "./base/BaseLLMAdapter";
-import { AgentMessage, ToolCall, ToolDefinition } from "../../../agent/types";
+import { AgentMessage, ToolCall, ToolDefinition } from "../../agent/types";
 
 export interface GeminiAdapterConfig {
   apiKey: string;
