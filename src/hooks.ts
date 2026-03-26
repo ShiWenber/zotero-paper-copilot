@@ -10,11 +10,8 @@ import { registerPrefsScripts } from "./modules/preferenceScript";
 import { createZToolkit } from "./utils/ztoolkit";
 import { SidebarUI } from "./modules/sidebar";
 import { initPDFSelection } from "./modules/pdf-selection";
-import { initPDFParsing } from "./modules/pdf-parsing";
-import { initTranslationAPI } from "./modules/translation";
-import { initSemanticScholarAPI } from "./modules/semantic-scholar";
-import { ThemeManager } from "./modules/theme";
-import { config } from "../package.json";
+import { SidebarAgentIntegrator } from "./integration";
+import { loadAllTools } from "./tools";
 
 async function onStartup() {
   await Promise.all([
@@ -58,58 +55,86 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
     `${addon.data.config.addonRef}-mainWindow.ftl`,
   );
 
-  // Show startup progress
   const popupWin = new ztoolkit.ProgressWindow(addon.data.config.addonName, {
     closeOnClick: true,
-    closeTime: 3000,
+    closeTime: -1,
   })
     .createLine({
       text: getString("startup-begin"),
       type: "default",
-      progress: 50,
+      progress: 0,
     })
     .show();
 
-  UIExampleFactory.registerStyleSheet(win);
+  await Zotero.Promise.delay(1000);
+  popupWin.changeLine({
+    progress: 30,
+    text: `[30%] ${getString("startup-begin")}`,
+  });
 
-  UIExampleFactory.registerRightClickMenuItem();
+  // Wrap example factory calls in try-catch so failures don't block progress
+  try {
+    UIExampleFactory.registerStyleSheet(win);
+  } catch (e) {
+    ztoolkit.log("Error registering stylesheet:", e);
+  }
 
-  UIExampleFactory.registerRightClickMenuPopup(win);
+  try {
+    UIExampleFactory.registerRightClickMenuItem();
+  } catch (e) {
+    ztoolkit.log("Error registering right-click menu item:", e);
+  }
 
-  UIExampleFactory.registerWindowMenuWithSeparator();
+  try {
+    UIExampleFactory.registerRightClickMenuPopup(win);
+  } catch (e) {
+    ztoolkit.log("Error registering right-click menu popup:", e);
+  }
 
-  PromptExampleFactory.registerNormalCommandExample();
+  try {
+    UIExampleFactory.registerWindowMenuWithSeparator();
+  } catch (e) {
+    ztoolkit.log("Error registering window menu:", e);
+  }
 
-  PromptExampleFactory.registerAnonymousCommandExample(win);
+  try {
+    PromptExampleFactory.registerNormalCommandExample();
+  } catch (e) {
+    ztoolkit.log("Error registering normal command:", e);
+  }
 
-  PromptExampleFactory.registerConditionalCommandExample();
+  try {
+    PromptExampleFactory.registerAnonymousCommandExample(win);
+  } catch (e) {
+    ztoolkit.log("Error registering anonymous command:", e);
+  }
+
+  try {
+    PromptExampleFactory.registerConditionalCommandExample();
+  } catch (e) {
+    ztoolkit.log("Error registering conditional command:", e);
+  }
+
+  await Zotero.Promise.delay(1000);
 
   popupWin.changeLine({
     progress: 100,
-    text: getString("startup-finish"),
+    text: `[100%] ${getString("startup-finish")}`,
   });
-  popupWin.startCloseTimer(3000);
+  popupWin.startCloseTimer(5000);
 
   // Register Paper Copilot Sidebar
   SidebarUI.create(win);
 
-  // Initialize theme manager
-  ThemeManager.init();
-
-  // Register theme stylesheet
-  registerThemeStylesheet(win);
+  // Initialize Agent Integrator
+  const integrator = new SidebarAgentIntegrator(win);
+  integrator.initialize();
+  addon.data.agentIntegrator = integrator;
+  // Also store on window for sidebar access (avoids circular deps)
+  (win as any)["sidebarAgentIntegrator"] = integrator;
 
   // Initialize PDF text selection listener
   initPDFSelection(win);
-
-  // Initialize PDF parsing module
-  initPDFParsing(win);
-
-  // Initialize Translation API
-  initTranslationAPI();
-
-  // Initialize Semantic Scholar API
-  initSemanticScholarAPI();
 
   // Add menu item to toggle sidebar
   const menuItem = win.document.createElement("menuitem");
@@ -125,46 +150,29 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
     toolsMenu.appendChild(menuItem);
   }
 
-  addon.hooks.onDialogEvents("dialogExample");
-}
-
-/**
- * Register theme stylesheet
- */
-function registerThemeStylesheet(win: _ZoteroTypes.MainWindow): void {
-  const doc = win.document;
-  const styleId = "pc-theme-css";
-
-  // Check if already loaded
-  if (doc.getElementById(styleId)) {
-    return;
-  }
-
-  // Create link element for theme CSS
-  const styles = ztoolkit.UI.createElement(doc, "link", {
-    id: styleId,
-    properties: {
-      type: "text/css",
-      rel: "stylesheet",
-      href: `chrome://${config.addonRef}/content/styles/theme.css`,
-    },
-  });
-  doc.documentElement?.appendChild(styles);
-
-  if (typeof ztoolkit !== "undefined") {
-    ztoolkit.log("Paper Copilot: Theme stylesheet registered");
+  // Wrap dialog creation in try-catch
+  try {
+    addon.hooks.onDialogEvents("dialogExample");
+  } catch (e) {
+    ztoolkit.log("Error creating dialog:", e);
   }
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {
-  ztoolkit.unregisterAll();
-  SidebarUI.remove();
+  // Check if addon and ztoolkit exist before using them
+  if (addon?.data?.ztoolkit) {
+    addon.data.ztoolkit.unregisterAll();
+  }
+  SidebarUI.remove(win);
   addon.data.dialog?.window?.close();
 }
 
 function onShutdown(): void {
-  ztoolkit.unregisterAll();
-  SidebarUI.remove();
+  // Check if addon and ztoolkit exist before using them
+  if (addon?.data?.ztoolkit) {
+    addon.data.ztoolkit.unregisterAll();
+  }
+  // Note: SidebarUI.remove() needs a window - skip in shutdown context
   addon.data.dialog?.window?.close();
   // Remove addon object
   addon.data.alive = false;
@@ -183,7 +191,7 @@ async function onNotify(
   extraData: { [key: string]: any },
 ) {
   // You can add your code to the corresponding notify type
-  ztoolkit.log("notify", event, type, ids, extraData);
+  addon.data.ztoolkit?.log("notify", event, type, ids, extraData);
   if (
     event == "select" &&
     type == "tab" &&
