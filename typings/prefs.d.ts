@@ -9,8 +9,6 @@ declare namespace _ZoteroTypes {
     PluginPrefsMap: {
       "enable": boolean;
       "input": string;
-      "theme": "light" | "dark" | "system";
-      "onboardingComplete": boolean;
     };
   }
 }
