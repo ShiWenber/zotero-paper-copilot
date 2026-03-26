@@ -74,7 +74,7 @@ describe("BaseAction", function () {
       }
 
       const action = new ErrorAction();
-      const result = await action.doExecute({}, mockContext);
+      const result = await action.execute({}, mockContext);
 
       assert.isFalse(result.success);
       assert.isNotNull(result.error);
@@ -138,8 +138,8 @@ describe("BaseAction", function () {
       const result = await action.execute({}, mockContext);
 
       assert.isFalse(result.success);
-      assert.isNotNull(result.error);
-      assert.include(result.error!, "requiredArg");
+      assert.isNotNull(result.errors);
+      assert.include(result.errors![0], "requiredArg");
     });
 
     it("should succeed when required parameter is provided", async function () {
@@ -179,8 +179,8 @@ describe("BaseAction", function () {
       const result = await action.execute({}, mockContext);
 
       assert.isFalse(result.success);
-      assert.isNotNull(result.error);
-      assert.include(result.error!, "fail_action");
+      assert.isNotNull(result.errors);
+      assert.include(result.message, "fail_action");
     });
   });
 
