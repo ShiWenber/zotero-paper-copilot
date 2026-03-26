@@ -9,45 +9,84 @@
 
 > 🤖 AI Assistant for Research Papers - Supercharge your literature review workflow with AI-powered features
 
-Paper Copilot is a Zotero 7+ plugin that brings powerful AI capabilities to your PDF reading experience. Ask questions about papers, get instant translations, generate summaries, and more - all without leaving Zotero.
+Paper Copilot is a Zotero 7+ plugin that brings powerful AI capabilities to your PDF reading experience. Built with a modern **Agent Runtime** architecture, it supports tool calling, streaming responses, and extensible actions.
 
 ![Paper Copilot Demo](doc/images/demo.png)
 
 ## ✨ Features
 
-### 📚 Phase 1: Core Foundation
+### 🏗️ Agent Runtime Architecture
 
-- **Sidebar UI** - Elegant side panel for AI interactions
-- **PDF Text Extraction** - Select and extract text from any PDF
-- **Quick Actions** - One-click access to AI features
+The plugin is built on a modular Agent Runtime system:
 
-### 📄 Phase 2: PDF Analysis
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Sidebar UI                             │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              SidebarAgentIntegrator                        │
+│         (Connects UI to Agent Runtime)                     │
+└─────────────────────────────────────────────────────────────┘
+                              │
+         ┌────────────────────┼────────────────────┐
+         ▼                    ▼                    ▼
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│  Agent Runtime  │  │   LLM Manager   │  │  Tool Registry  │
+│                 │  │                 │  │                 │
+│ • Message Loop  │  │ • OpenAI       │  │ • Read Tools    │
+│ • Tool Calls    │  │ • Claude       │  │ • Write Tools   │
+│ • Streaming    │  │ • Gemini       │  │ • Custom Tools  │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
+         │                    │                    │
+         └────────────────────┼────────────────────┘
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Service Layer                            │
+│  ┌──────────────────┐    ┌──────────────────────────────┐  │
+│  │ ZoteroGateway    │    │ PdfService                  │  │
+│  │ • Item Access   │    │ • PDF Text Extraction       │  │
+│  │ • Metadata      │    │ • Annotations              │  │
+│  │ • Collections   │    │ • Page Navigation          │  │
+│  └──────────────────┘    └──────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
 
-- **Page Structure Parsing** - Understand PDF layout and structure
-- **Figure Detection** - Identify charts, graphs, and images
-- **Table of Contents Extraction** - Auto-detect paper sections
-- **Metadata Storage** - Save and index paper information
+### 🤖 Agent Capabilities
 
-### 💬 Phase 3: AI Conversation
+- **Multi-Model Support**: OpenAI, Claude, Gemini with unified interface
+- **Streaming Responses**: Real-time AI answers as they're generated
+- **Tool Calling**: Agent can use tools to interact with Zotero
+- **Action System**: Automated tasks like audit, auto-tag, metadata sync
 
-- **LLM API Integration** - Connect to OpenAI, Claude, Ollama, and more
-- **Chat Interface** - Natural conversation about papers
-- **Streaming Responses** - Real-time AI answers
-- **Context Awareness** - Understand paper content and structure
+### 📚 Available Tools
 
-### 📝 Phase 4: Research Features
+#### Read Tools
 
-- **Paper Summary** - Generate concise paper abstracts
-- **Translation** - Instant translation (DeepL, Google, LLM fallback)
-- **Knowledge Base Q&A** - Query your library collection
-- **Literature Recommendations** - Get related paper suggestions
+| Tool                 | Description                                |
+| -------------------- | ------------------------------------------ |
+| `get_item`           | Get metadata for a specific Zotero item    |
+| `get_selected_items` | Get currently selected items               |
+| `get_pdf_text`       | Extract text from PDF (full or page range) |
+| `search_items`       | Search Zotero library                      |
 
-### ⚡ Phase 5: Polish & Performance
+#### Write Tools
 
-- **Performance Optimization** - Fast and responsive UI
-- **Theme Support** - Light/dark mode compatibility
-- **Onboarding** - Guided setup experience
-- **Testing** - Reliable and stable functionality
+| Tool               | Description                      |
+| ------------------ | -------------------------------- |
+| `add_note`         | Add a note to an item            |
+| `update_tags`      | Add/remove tags from items       |
+| `create_highlight` | Create PDF highlight annotation  |
+| `sync_notes`       | Sync chat as note to Zotero item |
+
+### ⚡ Actions
+
+| Action           | Description                 |
+| ---------------- | --------------------------- |
+| `audit_items`    | Check metadata completeness |
+| `auto_tag_items` | LLM-powered auto-tagging    |
+| `sync_metadata`  | Sync from DOI/arXiv/ISBN    |
 
 ## 🚀 Installation
 
@@ -79,103 +118,97 @@ npm start
 
 # Build for production
 npm run build
+
+# Run tests
+npm run test
 ```
 
 ## ⚙️ Configuration
 
-### Access Settings
-
-After installation, access settings via:
-
-- **Zotero Menu** → `Edit` → `Preferences` → `Paper Copilot`
-- Or click the plugin icon in the toolbar
-
 ### API Key Configuration
 
 1. **OpenAI API** (Default)
-   - Get your API key from [OpenAI Platform](https://platform.openapi.com)
+   - Get your API key from [OpenAI Platform](https://platform.openai.com)
    - Enter in Preferences → API Settings → OpenAI API Key
 
 2. **Claude API** (Alternative)
    - Get your API key from [Anthropic Console](https://console.anthropic.com)
    - Configure in Preferences → API Settings → Claude
 
-3. **Ollama** (Local, Free)
-   - Install [Ollama](https://ollama.com)
-   - Run locally and configure endpoint in preferences
+3. **Gemini API** (Alternative)
+   - Get your API key from [Google AI Studio](https://aistudio.google.com)
+   - Configure in Preferences → API Settings → Gemini
 
 ### Preferences Reference
 
-| Setting             | Description             | Default     |
-| ------------------- | ----------------------- | ----------- |
-| `API Provider`      | LLM service to use      | OpenAI      |
-| `API Key`           | Your API key            | -           |
-| `Model`             | LLM model to use        | gpt-4o-mini |
-| `Temperature`       | Response creativity     | 0.7         |
-| `Max Tokens`        | Response length limit   | 2048        |
-| `Sidebar Width`     | Panel width in pixels   | 400         |
-| `Auto-open Sidebar` | Open when text selected | false       |
+| Setting         | Description           | Default     |
+| --------------- | --------------------- | ----------- |
+| `API Provider`  | LLM service to use    | OpenAI      |
+| `API Key`       | Your API key          | -           |
+| `Model`         | LLM model to use      | gpt-4o-mini |
+| `Temperature`   | Response creativity   | 0.7         |
+| `Max Tokens`    | Response length limit | 2048        |
+| `Sidebar Width` | Panel width in pixels | 400         |
 
-## 📖 Usage Tutorials
+## 📖 Usage
 
 ### Opening the Sidebar
 
 - **Method 1**: Click `Tools` → `Toggle Paper Copilot` in the menu
-- **Method 2**: Use keyboard shortcut (if configured)
-- **Method 3**: Click the plugin button in toolbar
+- **Method 2**: Select text in a PDF and the sidebar will open
 
-### Selecting Text in PDF
+### Interacting with AI
 
-1. Open any PDF in Zotero's reader
-2. Select text with your mouse
-3. The selected text appears in the sidebar
-4. Use action buttons for AI responses
+1. **Select text** in any PDF
+2. Click **Ask AI** to get explanations
+3. Click **Summarize** for paper summary
+4. Click **Translate** for translation
 
-### Asking Questions
+### Using Actions
 
-```
-User: What is the main contribution of this paper?
-Paper Copilot: Based on the paper's abstract and structure...
-```
-
-### Generating Summary
-
-Click the **Summarize** button to get:
-
-- Paper overview
-- Key findings
-- Methodology summary
-- Conclusions
-
-### Translating Content
-
-1. Select text in any language
-2. Click **Translate** button
-3. Choose target language
-4. View translation in sidebar
-
-### Knowledge Base Q&A
-
-Ask questions about your entire library:
+Actions are automated tasks. Try:
 
 ```
-User: What papers discuss transformer architectures?
-Paper Copilot: Found 5 papers in your library...
+"@AI Audit my selected items"
+"@AI Auto-tag this paper"
+"@AI Sync metadata from DOI"
 ```
 
-## 🖼️ Screenshots
+## 📂 Project Structure
 
-### Main Interface
+```
+src/
+├── agent/           # Agent Runtime core
+│   ├── Agent.ts    # Main agent class
+│   ├── types.ts    # Type definitions
+│   └── Tool.ts     # Tool utilities
+├── services/       # Service layer
+│   ├── ZoteroGateway.ts
+│   └── PdfService.ts
+├── tools/          # Tool registry
+│   ├── read/       # Read tools
+│   └── write/       # Write tools
+├── llm/            # LLM adapters
+│   └── adapters/    # OpenAI, Claude, Gemini
+├── actions/        # Action system
+│   ├── audit/
+│   ├── autoTag/
+│   └── syncMetadata/
+└── integration/    # UI integration
+    └── SidebarAgentIntegrator.ts
+```
 
-![Sidebar Interface](doc/images/sidebar.png)
+## 🧪 Testing
 
-### Preferences Panel
+```bash
+# Run all tests
+npm run test
 
-![Preferences](doc/images/preferences.png)
+# Run with coverage
+npm run test -- --coverage
+```
 
-### PDF Interaction
-
-![PDF Selection](doc/images/pdf-selection.png)
+Test files are located in `test/` with the same structure as `src/`.
 
 ## ❓ FAQ
 
@@ -185,27 +218,15 @@ A: No, Paper Copilot requires Zotero 7 or newer due to API compatibility.
 
 ### Q: Which LLM providers are supported?
 
-A: OpenAI (GPT-4, GPT-4o), Anthropic (Claude), Ollama (local), and compatible APIs.
+A: OpenAI (GPT-4, GPT-4o), Anthropic (Claude), and Google (Gemini).
+
+### Q: How do I add custom tools?
+
+A: Create a new tool class extending `BaseTool` and register it in `ToolLoader.ts`.
 
 ### Q: Is my data secure?
 
-A: Yes. API calls are made directly from your machine. No data is stored on external servers beyond the LLM provider.
-
-### Q: Why isn't the sidebar showing?
-
-A: Try restarting Zotero. If issues persist, check the debug output (Help → Debug Output Logging).
-
-### Q: How do I change the sidebar language?
-
-A: Language settings are in Preferences → General → Language.
-
-### Q: Can I use my own LLM endpoint?
-
-A: Yes, configure custom endpoints in Preferences → Advanced → Custom API Endpoint.
-
-### Q: The plugin doesn't load after installation
-
-A: Check that you have Zotero 7+. Try reinstalling or check the error in Help → Debug Output Logging.
+A: Yes. API calls are made directly from your machine. No data is stored on external servers.
 
 ## 📝 Changelog
 
@@ -226,6 +247,7 @@ git checkout -b feature/your-feature
 
 # Make changes and test
 npm start
+npm run test
 
 # Commit and push
 git commit -m "feat: your feature"
@@ -240,6 +262,7 @@ This project is licensed under the **AGPL-3.0 License** - see the [LICENSE](LICE
 
 - [Zotero Plugin Template](https://github.com/windingwind/zotero-plugin-template) - Plugin scaffolding
 - [zotero-plugin-toolkit](https://github.com/windingwind/zotero-plugin-toolkit) - UI utilities
+- [llm-for-zotero](https://github.com/yilewang/llm-for-zotero) - Reference architecture for Agent Runtime design
 - [Zotero Community](https://forums.zotero.org) - Support and feedback
 
 ## 📬 Contact
