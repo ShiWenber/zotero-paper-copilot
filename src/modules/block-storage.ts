@@ -1,6 +1,6 @@
 /**
  * Zotero Paper Copilot - Block Storage Module
- * 
+ *
  * Stores PDF block metadata using Zotero's notes and preferences
  * Provides CRUD operations for block data
  */
@@ -26,7 +26,7 @@ export interface StoredBlock {
 
 export class BlockStorageManager {
   private static readonly STORAGE_PREFIX = "paper-copilot.blocks.";
-  
+
   /**
    * Initialize storage manager
    */
@@ -35,13 +35,16 @@ export class BlockStorageManager {
       ztoolkit.log("Paper Copilot: Block storage initialized");
     }
   }
-  
+
   /**
    * Save blocks for a specific item
    */
-  public static async saveBlocks(itemKey: string, blocks: (PDFBlock | FigureBlock)[]): Promise<void> {
+  public static async saveBlocks(
+    itemKey: string,
+    blocks: (PDFBlock | FigureBlock)[],
+  ): Promise<void> {
     try {
-      const storedBlocks: StoredBlock[] = blocks.map(block => ({
+      const storedBlocks: StoredBlock[] = blocks.map((block) => ({
         id: block.id,
         type: block.type,
         page: block.page,
@@ -49,18 +52,20 @@ export class BlockStorageManager {
         label: "label" in block ? block.label : undefined,
         bbox: block.bbox ? JSON.stringify(block.bbox) : undefined,
       }));
-      
+
       const storage: BlockStorage = {
         itemKey,
         blocks: storedBlocks,
         lastUpdated: new Date().toISOString(),
       };
-      
+
       const key = this.STORAGE_PREFIX + itemKey;
       Zotero.Prefs.set(key, JSON.stringify(storage));
-      
+
       if (typeof ztoolkit !== "undefined") {
-        ztoolkit.log(`Paper Copilot: Saved ${blocks.length} blocks for item ${itemKey}`);
+        ztoolkit.log(
+          `Paper Copilot: Saved ${blocks.length} blocks for item ${itemKey}`,
+        );
       }
     } catch (e) {
       if (typeof ztoolkit !== "undefined") {
@@ -68,7 +73,7 @@ export class BlockStorageManager {
       }
     }
   }
-  
+
   /**
    * Load blocks for a specific item
    */
@@ -76,7 +81,7 @@ export class BlockStorageManager {
     try {
       const key = this.STORAGE_PREFIX + itemKey;
       const data = Zotero.Prefs.get(key) as string;
-      
+
       if (data) {
         return JSON.parse(data) as BlockStorage;
       }
@@ -87,7 +92,7 @@ export class BlockStorageManager {
     }
     return null;
   }
-  
+
   /**
    * Delete blocks for a specific item
    */
@@ -95,7 +100,7 @@ export class BlockStorageManager {
     try {
       const key = this.STORAGE_PREFIX + itemKey;
       Zotero.Prefs.set(key, "");
-      
+
       if (typeof ztoolkit !== "undefined") {
         ztoolkit.log(`Paper Copilot: Deleted blocks for item ${itemKey}`);
       }
@@ -105,38 +110,38 @@ export class BlockStorageManager {
       }
     }
   }
-  
+
   /**
    * Get blocks by type
    */
   public static getBlocksByType(itemKey: string, type: string): StoredBlock[] {
     const storage = this.loadBlocks(itemKey);
     if (!storage) return [];
-    
-    return storage.blocks.filter(b => b.type === type);
+
+    return storage.blocks.filter((b) => b.type === type);
   }
-  
+
   /**
    * Get blocks by page
    */
   public static getBlocksByPage(itemKey: string, page: number): StoredBlock[] {
     const storage = this.loadBlocks(itemKey);
     if (!storage) return [];
-    
-    return storage.blocks.filter(b => b.page === page);
+
+    return storage.blocks.filter((b) => b.page === page);
   }
-  
+
   /**
    * Search blocks by text
    */
   public static searchBlocks(itemKey: string, keyword: string): StoredBlock[] {
     const storage = this.loadBlocks(itemKey);
     if (!storage) return [];
-    
+
     const lower = keyword.toLowerCase();
-    return storage.blocks.filter(b => b.text.toLowerCase().includes(lower));
+    return storage.blocks.filter((b) => b.text.toLowerCase().includes(lower));
   }
-  
+
   /**
    * Get all item keys with stored blocks
    */
@@ -144,31 +149,34 @@ export class BlockStorageManager {
     try {
       const allPrefs = Zotero.Prefs.getAll();
       const keys: string[] = [];
-      
+
       for (const key of Object.keys(allPrefs)) {
         if (key.startsWith(this.STORAGE_PREFIX)) {
           const itemKey = key.slice(this.STORAGE_PREFIX.length);
           keys.push(itemKey);
         }
       }
-      
+
       return keys;
     } catch (e) {
       return [];
     }
   }
-  
+
   /**
    * Save to item note
    */
-  public static async saveToItemNote(itemKey: string, blocks: (PDFBlock | FigureBlock)[]): Promise<void> {
+  public static async saveToItemNote(
+    itemKey: string,
+    blocks: (PDFBlock | FigureBlock)[],
+  ): Promise<void> {
     try {
       const item = await Zotero.Items.getByKeyAsync(itemKey);
       if (!item) return;
-      
+
       // Create or update note
       const noteContent = this.generateNoteContent(blocks);
-      
+
       // Check if note already exists
       const existingNote = item.getNotes?.();
       if (existingNote && existingNote.length > 0) {
@@ -185,7 +193,7 @@ export class BlockStorageManager {
         note.setParentID?.(item.id);
         await note.save?.();
       }
-      
+
       if (typeof ztoolkit !== "undefined") {
         ztoolkit.log("Paper Copilot: Saved blocks to item note");
       }
@@ -195,13 +203,15 @@ export class BlockStorageManager {
       }
     }
   }
-  
+
   /**
    * Generate note content from blocks
    */
-  private static generateNoteContent(blocks: (PDFBlock | FigureBlock)[]): string {
-    let html = '<h1>Paper Copilot - Document Structure</h1>';
-    
+  private static generateNoteContent(
+    blocks: (PDFBlock | FigureBlock)[],
+  ): string {
+    let html = "<h1>Paper Copilot - Document Structure</h1>";
+
     // Group by page
     const byPage: { [page: number]: (PDFBlock | FigureBlock)[] } = {};
     for (const block of blocks) {
@@ -210,10 +220,12 @@ export class BlockStorageManager {
       }
       byPage[block.page].push(block);
     }
-    
-    for (const page of Object.keys(byPage).sort((a, b) => Number(a) - Number(b))) {
+
+    for (const page of Object.keys(byPage).sort(
+      (a, b) => Number(a) - Number(b),
+    )) {
       html += `<h2>Page ${page}</h2>`;
-      
+
       for (const block of byPage[Number(page)]) {
         if (block.type === "heading" || block.type === "title") {
           html += `<h3>${this.escapeHtml(block.text)}</h3>`;
@@ -224,10 +236,10 @@ export class BlockStorageManager {
         }
       }
     }
-    
+
     return html;
   }
-  
+
   /**
    * Escape HTML
    */
@@ -243,7 +255,7 @@ export class BlockStorageManager {
  */
 export function initBlockStorage(): void {
   BlockStorageManager.init();
-  
+
   if (typeof ztoolkit !== "undefined") {
     ztoolkit.log("Paper Copilot: Block storage module initialized");
   }

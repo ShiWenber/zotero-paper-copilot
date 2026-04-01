@@ -109,8 +109,15 @@ export class ZoteroGateway {
       };
     } catch (e) {
       this.log("getItemMetadata error:", e);
+      // Try to get title safely, but don't fail on error
+      let title = "";
+      try {
+        title = item.getField?.("title") || "";
+      } catch {
+        // Ignore
+      }
       return {
-        title: item.getField?.("title") || "",
+        title,
         authors: [],
         tags: [],
         collections: [],

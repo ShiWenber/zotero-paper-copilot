@@ -12,5 +12,12 @@ export default zotero({
         "@typescript-eslint/no-unused-vars": "off",
       },
     },
+    {
+      files: ["test/**/*.test.ts"],
+      rules: {
+        // Allow multiple top-level suites in test files for better organization
+        "mocha/max-top-level-suites": ["error", { limit: 10 }],
+      },
+    },
   ],
 });

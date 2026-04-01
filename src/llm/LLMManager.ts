@@ -163,4 +163,12 @@ export class LLMManager {
       return false;
     }
   }
+
+  /**
+   * Reset the singleton instance. FOR TESTING PURPOSES ONLY.
+   * This allows tests to start with a fresh LLMManager state.
+   */
+  static resetInstance(): void {
+    LLMManager._instance = undefined as unknown as LLMManager;
+  }
 }

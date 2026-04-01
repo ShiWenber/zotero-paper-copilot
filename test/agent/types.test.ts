@@ -14,8 +14,8 @@ import {
   ToolHandler,
 } from "../../src/agent/types";
 
-describe("AgentMessage", () => {
-  it("should create a valid user message", () => {
+describe("AgentMessage", function () {
+  it("should create a valid user message", function () {
     const msg: AgentMessage = { role: "user", content: "Hello" };
     assert.equal(msg.role, "user");
     assert.equal(msg.content, "Hello");
@@ -23,19 +23,19 @@ describe("AgentMessage", () => {
     assert.isUndefined(msg.timestamp);
   });
 
-  it("should create a valid assistant message", () => {
+  it("should create a valid assistant message", function () {
     const msg: AgentMessage = { role: "assistant", content: "How can I help?" };
     assert.equal(msg.role, "assistant");
     assert.equal(msg.content, "How can I help?");
   });
 
-  it("should create a valid system message", () => {
+  it("should create a valid system message", function () {
     const msg: AgentMessage = { role: "system", content: "You are helpful." };
     assert.equal(msg.role, "system");
     assert.equal(msg.content, "You are helpful.");
   });
 
-  it("should support tool role with toolCallId", () => {
+  it("should support tool role with toolCallId", function () {
     const msg: AgentMessage = {
       role: "tool",
       content: "Tool result",
@@ -46,7 +46,7 @@ describe("AgentMessage", () => {
     assert.equal(msg.content, "Tool result");
   });
 
-  it("should support optional timestamp", () => {
+  it("should support optional timestamp", function () {
     const timestamp = Date.now();
     const msg: AgentMessage = {
       role: "user",
@@ -56,14 +56,14 @@ describe("AgentMessage", () => {
     assert.equal(msg.timestamp, timestamp);
   });
 
-  it("should allow empty content", () => {
+  it("should allow empty content", function () {
     const msg: AgentMessage = { role: "user", content: "" };
     assert.equal(msg.content, "");
   });
 });
 
-describe("ToolCall", () => {
-  it("should create a valid tool call", () => {
+describe("ToolCall", function () {
+  it("should create a valid tool call", function () {
     const call: ToolCall = {
       id: "call_1",
       name: "search_papers",
@@ -74,7 +74,7 @@ describe("ToolCall", () => {
     assert.deepEqual(call.arguments, { query: "machine learning" });
   });
 
-  it("should support empty arguments", () => {
+  it("should support empty arguments", function () {
     const call: ToolCall = {
       id: "call_2",
       name: "noop_tool",
@@ -83,12 +83,15 @@ describe("ToolCall", () => {
     assert.deepEqual(call.arguments, {});
   });
 
-  it("should support complex nested arguments", () => {
+  it("should support complex nested arguments", function () {
     const call: ToolCall = {
       id: "call_3",
       name: "complex_tool",
       arguments: {
-        items: [{ id: 1, name: "item1" }, { id: 2, name: "item2" }],
+        items: [
+          { id: 1, name: "item1" },
+          { id: 2, name: "item2" },
+        ],
         config: { nested: { deep: true } },
       },
     };
@@ -97,7 +100,7 @@ describe("ToolCall", () => {
     assert.isTrue(call.arguments.config.nested.deep);
   });
 
-  it("should support various argument types", () => {
+  it("should support various argument types", function () {
     const call: ToolCall = {
       id: "call_4",
       name: "mixed_args",
@@ -117,8 +120,8 @@ describe("ToolCall", () => {
   });
 });
 
-describe("ToolResult", () => {
-  it("should create a valid successful tool result", () => {
+describe("ToolResult", function () {
+  it("should create a valid successful tool result", function () {
     const result: ToolResult = {
       id: "call_1",
       result: { found: 5 },
@@ -128,7 +131,7 @@ describe("ToolResult", () => {
     assert.isUndefined(result.error);
   });
 
-  it("should create a valid error tool result", () => {
+  it("should create a valid error tool result", function () {
     const result: ToolResult = {
       id: "call_2",
       result: null,
@@ -139,7 +142,7 @@ describe("ToolResult", () => {
     assert.equal(result.error, "Tool execution failed");
   });
 
-  it("should support string result", () => {
+  it("should support string result", function () {
     const result: ToolResult = {
       id: "call_3",
       result: "Simple string result",
@@ -147,7 +150,7 @@ describe("ToolResult", () => {
     assert.equal(result.result, "Simple string result");
   });
 
-  it("should support array result", () => {
+  it("should support array result", function () {
     const result: ToolResult = {
       id: "call_4",
       result: [{ id: 1 }, { id: 2 }],
@@ -157,8 +160,8 @@ describe("ToolResult", () => {
   });
 });
 
-describe("ToolDefinition", () => {
-  it("should create a valid tool definition", () => {
+describe("ToolDefinition", function () {
+  it("should create a valid tool definition", function () {
     const handler: ToolHandler = async () => ({ success: true });
     const tool: ToolDefinition = {
       name: "test_tool",
@@ -172,7 +175,7 @@ describe("ToolDefinition", () => {
     assert.isFunction(tool.handler);
   });
 
-  it("should create tool definition with empty parameters", () => {
+  it("should create tool definition with empty parameters", function () {
     const handler: ToolHandler = async () => "done";
     const tool: ToolDefinition = {
       name: "simple_tool",
@@ -183,7 +186,7 @@ describe("ToolDefinition", () => {
     assert.deepEqual(tool.parameters, []);
   });
 
-  it("should support complex parameter schema", () => {
+  it("should support complex parameter schema", function () {
     const handler: ToolHandler = async (args) => args;
     const schema = {
       type: "object",
@@ -212,8 +215,8 @@ describe("ToolDefinition", () => {
   });
 });
 
-describe("AgentRequest", () => {
-  it("should create a valid request with messages only", () => {
+describe("AgentRequest", function () {
+  it("should create a valid request with messages only", function () {
     const request: AgentRequest = {
       messages: [
         { role: "user", content: "Hello" },
@@ -225,7 +228,7 @@ describe("AgentRequest", () => {
     assert.isUndefined(request.context);
   });
 
-  it("should create a valid request with tools", () => {
+  it("should create a valid request with tools", function () {
     const tool: ToolDefinition = {
       name: "tool1",
       description: "A tool",
@@ -240,7 +243,7 @@ describe("AgentRequest", () => {
     assert.equal(request.tools[0].name, "tool1");
   });
 
-  it("should create a valid request with context", () => {
+  it("should create a valid request with context", function () {
     const request: AgentRequest = {
       messages: [{ role: "user", content: "Hello" }],
       context: { userId: "user_123", sessionId: "sess_456" },
@@ -249,7 +252,7 @@ describe("AgentRequest", () => {
     assert.equal(request.context.sessionId, "sess_456");
   });
 
-  it("should create a valid request with all fields", () => {
+  it("should create a valid request with all fields", function () {
     const tool: ToolDefinition = {
       name: "full_tool",
       description: "Full tool",
@@ -266,7 +269,7 @@ describe("AgentRequest", () => {
     assert.deepEqual(request.context, { key: "value" });
   });
 
-  it("should allow empty messages array", () => {
+  it("should allow empty messages array", function () {
     const request: AgentRequest = {
       messages: [],
     };
@@ -274,8 +277,8 @@ describe("AgentRequest", () => {
   });
 });
 
-describe("AgentResponse", () => {
-  it("should create a valid text response", () => {
+describe("AgentResponse", function () {
+  it("should create a valid text response", function () {
     const response: AgentResponse = {
       content: "Here is your answer.",
     };
@@ -284,19 +287,17 @@ describe("AgentResponse", () => {
     assert.isUndefined(response.error);
   });
 
-  it("should create a response with tool calls", () => {
+  it("should create a response with tool calls", function () {
     const response: AgentResponse = {
       content: "Let me search for that.",
-      toolCalls: [
-        { id: "call_1", name: "search", arguments: { q: "test" } },
-      ],
+      toolCalls: [{ id: "call_1", name: "search", arguments: { q: "test" } }],
     };
     assert.equal(response.content, "Let me search for that.");
     assert.lengthOf(response.toolCalls, 1);
     assert.equal(response.toolCalls[0].name, "search");
   });
 
-  it("should create an error response", () => {
+  it("should create an error response", function () {
     const response: AgentResponse = {
       content: "",
       error: "Something went wrong",
@@ -305,7 +306,7 @@ describe("AgentResponse", () => {
     assert.equal(response.error, "Something went wrong");
   });
 
-  it("should create response with multiple tool calls", () => {
+  it("should create response with multiple tool calls", function () {
     const response: AgentResponse = {
       content: "I'll do multiple things.",
       toolCalls: [
@@ -318,8 +319,8 @@ describe("AgentResponse", () => {
   });
 });
 
-describe("ToolHandler type", () => {
-  it("should accept handler with no context", async () => {
+describe("ToolHandler type", function () {
+  it("should accept handler with no context", async function () {
     const handler: ToolHandler = async (args) => {
       return { received: args };
     };
@@ -327,7 +328,7 @@ describe("ToolHandler type", () => {
     assert.deepEqual(result, { received: { key: "value" } });
   });
 
-  it("should accept handler with context", async () => {
+  it("should accept handler with context", async function () {
     const handler: ToolHandler = async (args, context) => {
       return { args, context };
     };
@@ -337,7 +338,7 @@ describe("ToolHandler type", () => {
     assert.deepEqual(result.context, ctx);
   });
 
-  it("should accept async handler that throws", async () => {
+  it("should accept async handler that throws", async function () {
     const handler: ToolHandler = async () => {
       throw new Error("Handler error");
     };

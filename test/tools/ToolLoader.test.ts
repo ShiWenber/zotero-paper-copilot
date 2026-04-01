@@ -2,7 +2,7 @@ import { assert } from "chai";
 import {
   loadAllTools,
   getAllTools,
-  getToolsByCategory
+  getToolsByCategory,
 } from "../../src/tools/ToolLoader";
 import { toolRegistry } from "../../src/tools/index";
 

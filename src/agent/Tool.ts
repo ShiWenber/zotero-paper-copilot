@@ -19,6 +19,8 @@ export function createToolDefinition(
   options: ToolOptions,
   handler: ToolHandler,
 ): ToolDefinition {
+  // If parameters is not provided (undefined), use empty object as default
+  // This matches the original behavior
   return {
     name: options.name,
     description: options.description,
@@ -55,13 +57,23 @@ export abstract class BaseToolClass implements BaseTool {
   ): Promise<any>;
 
   toDefinition(): ToolDefinition {
-    return createToolDefinition(
-      {
-        name: this.name,
-        description: this.description,
-        parameters: this.parameters,
-      },
-      (args, context) => this.execute(args, context),
-    );
+    // If parameters is undefined or empty object, omit it from the definition
+    // This allows BaseToolClass subclasses to signal "no parameters" by
+    // either not defining parameters or setting it to {}
+    const params = this.parameters;
+    const hasParameters =
+      params !== undefined && Object.keys(params).length > 0;
+
+    const def: ToolDefinition = {
+      name: this.name,
+      description: this.description,
+      handler: (args, context) => this.execute(args, context),
+    };
+
+    if (hasParameters) {
+      def.parameters = params;
+    }
+
+    return def;
   }
 }

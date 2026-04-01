@@ -74,6 +74,10 @@ export class Agent {
    * Get tool by name.
    */
   getTool(name: string): ToolDefinition | undefined {
+    // Empty string is not a valid tool name
+    if (!name) {
+      return undefined;
+    }
     return this.tools.get(name);
   }
 

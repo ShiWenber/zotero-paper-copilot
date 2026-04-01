@@ -25,7 +25,7 @@ export interface ToolResult {
 export interface ToolDefinition {
   name: string;
   description: string;
-  parameters: any;
+  parameters?: any;
   handler: ToolHandler;
 }
 

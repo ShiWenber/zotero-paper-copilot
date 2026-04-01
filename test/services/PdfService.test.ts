@@ -303,8 +303,7 @@ describe("PdfService", function () {
         annotationType: "highlight",
         annotationPageNumber: "5",
         annotationText: "Test text",
-        annotationPosition:
-          '{"x":100,"y":200,"width":300,"height":20}',
+        annotationPosition: '{"x":100,"y":200,"width":300,"height":20}',
         annotationColor: "#FFFF00",
       };
       const mockAttachment = {
@@ -386,7 +385,7 @@ describe("PdfService", function () {
         null as any,
         1,
         "text",
-        validPosition
+        validPosition,
       );
       assert.isNull(result);
     });
@@ -396,7 +395,7 @@ describe("PdfService", function () {
         { id: 1 },
         0,
         "text",
-        validPosition
+        validPosition,
       );
       assert.isNull(result);
     });
@@ -406,7 +405,7 @@ describe("PdfService", function () {
         { id: 1 },
         1,
         "",
-        validPosition
+        validPosition,
       );
       assert.isNull(result);
     });
@@ -416,7 +415,7 @@ describe("PdfService", function () {
         { id: 1 },
         1,
         "text",
-        null as any
+        null as any,
       );
       assert.isNull(result);
     });
@@ -430,7 +429,7 @@ describe("PdfService", function () {
         { id: 1 },
         1,
         "text",
-        validPosition
+        validPosition,
       );
       assert.isNull(result);
     });
@@ -445,7 +444,7 @@ describe("PdfService", function () {
         { id: 1 },
         5,
         "Test text",
-        validPosition
+        validPosition,
       );
       assert.isNotNull(result);
       assert.equal(result?.type, "highlight");
@@ -463,7 +462,7 @@ describe("PdfService", function () {
         null as any,
         1,
         "text",
-        validPosition
+        validPosition,
       );
       assert.isNull(result);
     });
@@ -473,7 +472,7 @@ describe("PdfService", function () {
         { id: 1 },
         0,
         "text",
-        validPosition
+        validPosition,
       );
       assert.isNull(result);
     });
@@ -483,7 +482,7 @@ describe("PdfService", function () {
         { id: 1 },
         1,
         "",
-        validPosition
+        validPosition,
       );
       assert.isNull(result);
     });
@@ -493,7 +492,7 @@ describe("PdfService", function () {
         { id: 1 },
         1,
         "text",
-        null as any
+        null as any,
       );
       assert.isNull(result);
     });
@@ -507,7 +506,7 @@ describe("PdfService", function () {
         { id: 1 },
         1,
         "Note",
-        validPosition
+        validPosition,
       );
       assert.isNull(result);
     });
@@ -522,7 +521,7 @@ describe("PdfService", function () {
         { id: 1 },
         10,
         "Note content",
-        validPosition
+        validPosition,
       );
       assert.isNotNull(result);
       assert.equal(result?.type, "note");

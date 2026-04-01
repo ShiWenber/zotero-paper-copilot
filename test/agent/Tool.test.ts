@@ -4,14 +4,11 @@
  */
 
 import { assert } from "chai";
-import {
-  createToolDefinition,
-  BaseToolClass,
-} from "../../src/agent/Tool";
+import { createToolDefinition, BaseToolClass } from "../../src/agent/Tool";
 import type { ToolDefinition, ToolHandler } from "../../src/agent/types";
 
-describe("createToolDefinition", () => {
-  it("should create a valid tool definition", () => {
+describe("createToolDefinition", function () {
+  it("should create a valid tool definition", function () {
     const handler: ToolHandler = async () => ({ success: true });
     const tool = createToolDefinition(
       {
@@ -28,7 +25,7 @@ describe("createToolDefinition", () => {
     assert.isFunction(tool.handler);
   });
 
-  it("should use empty object as default parameters", () => {
+  it("should use empty object as default parameters", function () {
     const handler: ToolHandler = async () => "done";
     const tool = createToolDefinition(
       {
@@ -41,7 +38,7 @@ describe("createToolDefinition", () => {
     assert.deepEqual(tool.parameters, {});
   });
 
-  it("should preserve handler function", async () => {
+  it("should preserve handler function", async function () {
     const expectedResult = { data: [1, 2, 3] };
     const handler: ToolHandler = async () => expectedResult;
     const tool = createToolDefinition(
@@ -56,7 +53,7 @@ describe("createToolDefinition", () => {
     assert.deepEqual(result, expectedResult);
   });
 
-  it("should accept complex parameter schema", () => {
+  it("should accept complex parameter schema", function () {
     const handler: ToolHandler = async () => null;
     const schema = {
       type: "object",
@@ -85,7 +82,7 @@ describe("createToolDefinition", () => {
     assert.equal(tool.parameters.required[0], "query");
   });
 
-  it("should create multiple distinct tools", () => {
+  it("should create multiple distinct tools", function () {
     const handler1: ToolHandler = async () => "tool1";
     const handler2: ToolHandler = async () => "tool2";
     const handler3: ToolHandler = async () => "tool3";
@@ -110,20 +107,17 @@ describe("createToolDefinition", () => {
     assert.equal(tool3.name, "tool_c");
   });
 
-  it("should allow empty string as name and description", () => {
+  it("should allow empty string as name and description", function () {
     const handler: ToolHandler = async () => null;
-    const tool = createToolDefinition(
-      { name: "", description: "" },
-      handler,
-    );
+    const tool = createToolDefinition({ name: "", description: "" }, handler);
 
     assert.equal(tool.name, "");
     assert.equal(tool.description, "");
   });
 });
 
-describe("BaseToolClass", () => {
-  it("should create a concrete tool class", () => {
+describe("BaseToolClass", function () {
+  it("should create a concrete tool class", function () {
     class TestTool extends BaseToolClass {
       name = "concrete_tool";
       description = "A concrete tool implementation";
@@ -139,11 +133,14 @@ describe("BaseToolClass", () => {
     assert.equal(tool.description, "A concrete tool implementation");
   });
 
-  it("should convert to ToolDefinition via toDefinition()", async () => {
+  it("should convert to ToolDefinition via toDefinition()", async function () {
     class SearchTool extends BaseToolClass {
       name = "search";
       description = "Search for items";
-      parameters = { type: "object", properties: { query: { type: "string" } } };
+      parameters = {
+        type: "object",
+        properties: { query: { type: "string" } },
+      };
 
       async execute(args: Record<string, any>): Promise<any> {
         return `Searching for: ${args.query}`;
@@ -163,7 +160,7 @@ describe("BaseToolClass", () => {
     assert.equal(result, "Searching for: test");
   });
 
-  it("should pass context through to execute", async () => {
+  it("should pass context through to execute", async function () {
     class ContextTool extends BaseToolClass {
       name = "context_tool";
       description = "Tool that uses context";
@@ -186,7 +183,7 @@ describe("BaseToolClass", () => {
     assert.deepEqual(result.context, ctx);
   });
 
-  it("should support undefined context", async () => {
+  it("should support undefined context", async function () {
     class SimpleTool extends BaseToolClass {
       name = "simple";
       description = "Simple tool";
@@ -203,7 +200,7 @@ describe("BaseToolClass", () => {
     assert.deepEqual(result, { x: 1 });
   });
 
-  it("should allow multiple concrete implementations", () => {
+  it("should allow multiple concrete implementations", function () {
     class ToolA extends BaseToolClass {
       name = "tool_a";
       description = "Tool A";
@@ -230,7 +227,7 @@ describe("BaseToolClass", () => {
     assert.notEqual(toolA.name, toolB.name);
   });
 
-  it("should support optional parameters property", async () => {
+  it("should support optional parameters property", async function () {
     class NoParamsTool extends BaseToolClass {
       name = "no_params";
       description = "Tool without parameters";
@@ -247,11 +244,14 @@ describe("BaseToolClass", () => {
     assert.isUndefined(definition.parameters);
   });
 
-  it("toDefinition should create callable handler", async () => {
+  it("toDefinition should create callable handler", async function () {
     class EchoTool extends BaseToolClass {
       name = "echo";
       description = "Echoes the input";
-      parameters = { type: "object", properties: { value: { type: "string" } } };
+      parameters = {
+        type: "object",
+        properties: { value: { type: "string" } },
+      };
 
       async execute(args: Record<string, any>): Promise<any> {
         return { echoed: args.value };
@@ -266,7 +266,7 @@ describe("BaseToolClass", () => {
     assert.deepEqual(result, { echoed: "hello" });
   });
 
-  it("should handle execute throwing an error", async () => {
+  it("should handle execute throwing an error", async function () {
     class FailingTool extends BaseToolClass {
       name = "failing";
       description = "This tool fails";
@@ -289,8 +289,8 @@ describe("BaseToolClass", () => {
   });
 });
 
-describe("ToolDefinition interop", () => {
-  it("should be compatible with Agent.registerTool", () => {
+describe("ToolDefinition interop", function () {
+  it("should be compatible with Agent.registerTool", function () {
     // This is a structural test - verifying that createToolDefinition
     // returns an object compatible with ToolDefinition interface
     const handler: ToolHandler = async () => ({ ok: true });
@@ -309,7 +309,7 @@ describe("ToolDefinition interop", () => {
     assert.isFunction(tool.handler);
   });
 
-  it("should work with tool call arguments", async () => {
+  it("should work with tool call arguments", async function () {
     const handler: ToolHandler = async (args, context) => {
       return {
         received: args,

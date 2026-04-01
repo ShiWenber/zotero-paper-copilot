@@ -3,9 +3,10 @@
  *
  * Provides minimal Zotero mock globals so unit tests that reference
  * Zotero globals (e.g. startup.test.ts) don't crash in Node.js.
+ * Also provides fetch mock for HTTP tests.
  */
 
-const config = require("../package.json").config;
+import { config } from "../package.json";
 
 // Minimal Zotero mock for startup/environment tests
 (globalThis as typeof globalThis & { Zotero?: unknown }).Zotero = {

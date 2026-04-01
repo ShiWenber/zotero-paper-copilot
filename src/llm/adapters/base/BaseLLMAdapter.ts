@@ -58,6 +58,6 @@ export abstract class BaseLLMAdapter {
    * @returns true if the API key is set and configuration is valid
    */
   validateConfig(): boolean {
-    return Boolean(this.apiKey && this.apiKey.length > 0);
+    return Boolean(this.apiKey && this.apiKey.trim().length > 0);
   }
 }

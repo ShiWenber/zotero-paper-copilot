@@ -72,6 +72,7 @@ npm run lint:fix
 ```
 
 类型 (type)：
+
 - `feat`: 新功能
 - `fix`: Bug 修复
 - `docs`: 文档更新
@@ -81,6 +82,7 @@ npm run lint:fix
 - `chore`: 构建过程或辅助工具变动
 
 示例：
+
 ```
 feat(llm-api): add Claude API support
 

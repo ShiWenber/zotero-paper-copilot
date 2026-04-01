@@ -250,7 +250,10 @@ describe("BaseLLMAdapter", function () {
 
         async complete(messages: any, tools?: any) {
           if (tools) {
-            return { content: "tools received: " + tools.length, finishReason: "stop" };
+            return {
+              content: "tools received: " + tools.length,
+              finishReason: "stop",
+            };
           }
           return { content: "no tools", finishReason: "stop" };
         }
@@ -340,7 +343,11 @@ describe("BaseLLMAdapter", function () {
         apiKey = "key";
 
         async complete() {
-          return { content: "", finishReason: "error", error: "Something went wrong" };
+          return {
+            content: "",
+            finishReason: "error",
+            error: "Something went wrong",
+          };
         }
 
         validateConfig() {

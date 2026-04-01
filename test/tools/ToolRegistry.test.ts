@@ -17,7 +17,7 @@ describe("ToolRegistry", function () {
         name: "test_tool",
         description: "A test tool",
         category: "test",
-        execute: async () => ({ success: true, result: "test" })
+        execute: async () => ({ success: true, result: "test" }),
       };
 
       registry.register(mockTool as unknown as Tool);
@@ -29,7 +29,7 @@ describe("ToolRegistry", function () {
         name: "dup_tool",
         description: "A test tool",
         category: "test",
-        execute: async () => ({ success: true, result: "test" })
+        execute: async () => ({ success: true, result: "test" }),
       };
 
       registry.register(mockTool as unknown as Tool);
@@ -43,7 +43,7 @@ describe("ToolRegistry", function () {
         name: "",
         description: "A test tool",
         category: "test",
-        execute: async () => ({ success: true, result: "test" })
+        execute: async () => ({ success: true, result: "test" }),
       } as unknown as Tool;
 
       assert.throws(function () {
@@ -58,7 +58,7 @@ describe("ToolRegistry", function () {
         name: "get_tool",
         description: "A test tool",
         category: "test",
-        execute: async () => ({ success: true, result: "test" })
+        execute: async () => ({ success: true, result: "test" }),
       };
 
       registry.register(mockTool as unknown as Tool);
@@ -78,13 +78,13 @@ describe("ToolRegistry", function () {
         name: "tool_1",
         description: "Tool 1",
         category: "test",
-        execute: async () => ({ success: true, result: "1" })
+        execute: async () => ({ success: true, result: "1" }),
       };
       const tool2 = {
         name: "tool_2",
         description: "Tool 2",
         category: "test",
-        execute: async () => ({ success: true, result: "2" })
+        execute: async () => ({ success: true, result: "2" }),
       };
 
       registry.register(tool1 as unknown as Tool);
@@ -106,7 +106,7 @@ describe("ToolRegistry", function () {
         name: "has_tool",
         description: "A test tool",
         category: "test",
-        execute: async () => ({ success: true, result: "test" })
+        execute: async () => ({ success: true, result: "test" }),
       };
 
       registry.register(mockTool as unknown as Tool);
@@ -124,7 +124,7 @@ describe("ToolRegistry", function () {
         name: "remove_tool",
         description: "A test tool",
         category: "test",
-        execute: async () => ({ success: true, result: "test" })
+        execute: async () => ({ success: true, result: "test" }),
       };
 
       registry.register(mockTool as unknown as Tool);
@@ -145,13 +145,13 @@ describe("ToolRegistry", function () {
         name: "read_tool",
         description: "Read tool",
         category: "read",
-        execute: async () => ({ success: true, result: "1" })
+        execute: async () => ({ success: true, result: "1" }),
       };
       const tool2 = {
         name: "write_tool",
         description: "Write tool",
         category: "write",
-        execute: async () => ({ success: true, result: "2" })
+        execute: async () => ({ success: true, result: "2" }),
       };
 
       registry.register(tool1 as unknown as Tool);
@@ -179,7 +179,7 @@ describe("ToolRegistry", function () {
         name: "size_tool",
         description: "Size test",
         category: "test",
-        execute: async () => ({ success: true, result: "test" })
+        execute: async () => ({ success: true, result: "test" }),
       } as unknown as Tool);
       assert.equal(registry.size(), 1);
     });
@@ -191,7 +191,7 @@ describe("ToolRegistry", function () {
         name: "clear_tool",
         description: "Clear test",
         category: "test",
-        execute: async () => ({ success: true, result: "test" })
+        execute: async () => ({ success: true, result: "test" }),
       } as unknown as Tool);
       assert.isTrue(registry.has("clear_tool"));
       registry.clear();

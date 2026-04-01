@@ -1,5 +1,9 @@
 import { assert } from "chai";
-import { BaseAction, ActionContext, ActionResult } from "../../src/actions/base/Action";
+import {
+  BaseAction,
+  ActionContext,
+  ActionResult,
+} from "../../src/actions/base/Action";
 import type { ParameterDefinition } from "../../src/tools/base/Tool";
 
 // Minimal mock context that satisfies ActionContext
@@ -9,9 +13,9 @@ const mockContext: ActionContext = {
   llmManager: {} as any,
   services: {
     zotero: {} as any,
-    pdf: {} as any
+    pdf: {} as any,
   },
-  toolRegistry: {} as any
+  toolRegistry: {} as any,
 };
 
 describe("BaseAction", function () {
@@ -22,8 +26,12 @@ describe("BaseAction", function () {
         description = "Test";
         parameters = [];
 
-        canApply() { return true; }
-        doExecute() { return { success: true, message: "Done" }; }
+        canApply() {
+          return true;
+        }
+        doExecute() {
+          return { success: true, message: "Done" };
+        }
       }
 
       const action = new BooleanAction();
@@ -36,8 +44,12 @@ describe("BaseAction", function () {
         description = "Test";
         parameters = [];
 
-        canApply() { return false; }
-        doExecute() { return { success: true, message: "Done" }; }
+        canApply() {
+          return false;
+        }
+        doExecute() {
+          return { success: true, message: "Done" };
+        }
       }
 
       const action = new FalseAction();
@@ -52,8 +64,12 @@ describe("BaseAction", function () {
         description = "Test";
         parameters = [];
 
-        canApply() { return true; }
-        doExecute() { return { success: true, message: "Executed" }; }
+        canApply() {
+          return true;
+        }
+        doExecute() {
+          return { success: true, message: "Executed" };
+        }
       }
 
       const action = new ExecAction();
@@ -69,8 +85,12 @@ describe("BaseAction", function () {
         description = "Test";
         parameters = [];
 
-        canApply() { return true; }
-        doExecute() { throw new Error("Test error"); }
+        canApply() {
+          return true;
+        }
+        doExecute() {
+          throw new Error("Test error");
+        }
       }
 
       const action = new ErrorAction();
@@ -86,7 +106,9 @@ describe("BaseAction", function () {
         description = "Test";
         parameters = [];
 
-        canApply() { return true; }
+        canApply() {
+          return true;
+        }
         doExecute() {
           return { success: true, message: "Done", data: { items: [1, 2, 3] } };
         }
@@ -107,7 +129,9 @@ describe("BaseAction", function () {
         description = "Test";
         parameters = [];
 
-        canApply() { return true; }
+        canApply() {
+          return true;
+        }
         doExecute(args: Record<string, any>) {
           return { success: true, message: String(args["input"]) };
         }
@@ -123,15 +147,21 @@ describe("BaseAction", function () {
       class ParamAction extends BaseAction {
         name = "param_action";
         description = "Test";
-        parameters = [{
-          name: "requiredArg",
-          description: "A required argument",
-          type: "string",
-          required: true
-        } as ParameterDefinition];
+        parameters = [
+          {
+            name: "requiredArg",
+            description: "A required argument",
+            type: "string",
+            required: true,
+          } as ParameterDefinition,
+        ];
 
-        canApply() { return true; }
-        doExecute() { return { success: true, message: "ok" }; }
+        canApply() {
+          return true;
+        }
+        doExecute() {
+          return { success: true, message: "ok" };
+        }
       }
 
       const action = new ParamAction();
@@ -146,21 +176,28 @@ describe("BaseAction", function () {
       class ParamAction extends BaseAction {
         name = "param_action";
         description = "Test";
-        parameters = [{
-          name: "requiredArg",
-          description: "A required argument",
-          type: "string",
-          required: true
-        } as ParameterDefinition];
+        parameters = [
+          {
+            name: "requiredArg",
+            description: "A required argument",
+            type: "string",
+            required: true,
+          } as ParameterDefinition,
+        ];
 
-        canApply() { return true; }
+        canApply() {
+          return true;
+        }
         doExecute(args: Record<string, any>) {
           return { success: true, message: args["requiredArg"] };
         }
       }
 
       const action = new ParamAction();
-      const result = await action.execute({ requiredArg: "value" }, mockContext);
+      const result = await action.execute(
+        { requiredArg: "value" },
+        mockContext,
+      );
       assert.isTrue(result.success);
       assert.equal(result.message, "value");
     });
@@ -171,8 +208,12 @@ describe("BaseAction", function () {
         description = "Test";
         parameters = [];
 
-        canApply() { return true; }
-        doExecute() { throw new Error("inner error"); }
+        canApply() {
+          return true;
+        }
+        doExecute() {
+          throw new Error("inner error");
+        }
       }
 
       const action = new FailAction();
@@ -191,8 +232,12 @@ describe("BaseAction", function () {
         description = "A named action for testing";
         parameters = [];
 
-        canApply() { return true; }
-        doExecute() { return { success: true, message: "Done" }; }
+        canApply() {
+          return true;
+        }
+        doExecute() {
+          return { success: true, message: "Done" };
+        }
       }
 
       const action = new NamedAction();

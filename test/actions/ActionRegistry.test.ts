@@ -1,17 +1,29 @@
 import { assert } from "chai";
 import { actionRegistry } from "../../src/actions/ActionRegistry";
-import { BaseAction, ActionContext, ActionResult } from "../../src/actions/base/Action";
+import {
+  BaseAction,
+  ActionContext,
+  ActionResult,
+} from "../../src/actions/base/Action";
 import type { ParameterDefinition } from "../../src/tools/base/Tool";
 
 // Helper: create a concrete action class for testing
-function makeTestAction(name: string, description: string, params?: ParameterDefinition[]) {
+function makeTestAction(
+  name: string,
+  description: string,
+  params?: ParameterDefinition[],
+) {
   return class extends BaseAction {
     name = name;
     description = description;
     parameters = params ?? [];
 
-    canApply() { return true; }
-    doExecute() { return { success: true, message: "Done" }; }
+    canApply() {
+      return true;
+    }
+    doExecute() {
+      return { success: true, message: "Done" };
+    }
   };
 }
 

@@ -40,6 +40,7 @@
     "@types/node": "^24.10.0",
     "@zotero-plugin/eslint-config": "^0.6.9",
     "chai": "^6.2.1",
+    "chai-as-promised": "^8.0.2",
     "diff": "^8.0.3",
     "eslint": "^9.39.2",
     "mocha": "^11.7.5",

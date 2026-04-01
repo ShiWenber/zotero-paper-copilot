@@ -8,8 +8,8 @@ const mockContext: ToolContext = {
   agent: {} as any,
   services: {
     zotero: {} as any,
-    pdf: {} as any
-  }
+    pdf: {} as any,
+  },
 };
 
 describe("BaseTool", function () {
@@ -80,8 +80,8 @@ describe("BaseTool", function () {
           name: "requiredArg",
           description: "A required argument",
           type: "string",
-          required: true
-        }
+          required: true,
+        },
       ];
 
       async doExecute() {

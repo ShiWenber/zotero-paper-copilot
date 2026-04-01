@@ -12,6 +12,8 @@ describe("LLMManager", function () {
   let manager: LLMManager;
 
   beforeEach(function () {
+    // Reset singleton before each test to ensure clean state
+    LLMManager.resetInstance();
     manager = LLMManager.getInstance();
   });
 
@@ -264,7 +266,12 @@ describe("LLMManager", function () {
       (freshManager as any).adapters = new Map();
       (freshManager as any)._currentProvider = "openai";
 
-      await assert.isRejected(freshManager.complete([{ role: "user", content: "Hi" }]));
+      try {
+        await freshManager.complete([{ role: "user", content: "Hi" }]);
+        assert.fail("Should have thrown an error");
+      } catch (err: any) {
+        assert.match(err.message, /No adapter registered/);
+      }
     });
 
     it("should pass tools to adapter", async function () {
@@ -290,7 +297,9 @@ describe("LLMManager", function () {
       const adapter = new MockAdapter();
       manager.registerAdapter("openai", adapter);
 
-      const tools = [{ name: "test_tool", description: "A test", parameters: {} }];
+      const tools = [
+        { name: "test_tool", description: "A test", parameters: {} },
+      ];
       await manager.complete([{ role: "user", content: "Hi" }], tools);
 
       assert.isArray(adapter.lastTools);
