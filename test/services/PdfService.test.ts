@@ -536,7 +536,7 @@ describe("PdfService", function () {
       assert.isFalse(await pdfService.deleteAnnotation(null as any));
     });
 
-    it("should return false when annotation not found", function () {
+    it("should return false when annotation not found", async function () {
       mockZotero.Items.get = () => null;
       const result = pdfService.deleteAnnotation(123);
       // Using eventually pattern for promise return
