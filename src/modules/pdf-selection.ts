@@ -9,6 +9,10 @@ import { SidebarUI } from "./sidebar";
 
 export class PDFSelection {
   private static initialized = false;
+  
+  // Event listener tracking for cleanup
+  private static registeredListeners: Map<EventTarget, Map<string, EventListenerOrEventListenerObject[]>> = new Map();
+  private static listenerCount = 0;
 
   /**
    * Initialize PDF selection listener
@@ -29,17 +33,82 @@ export class PDFSelection {
   }
 
   /**
+   * Add event listener with tracking for cleanup
+   */
+  private static addTrackedListener(
+    target: EventTarget,
+    type: string,
+    handler: EventListener,
+    options?: AddEventListenerOptions,
+  ): void {
+    target.addEventListener(type, handler, options);
+    
+    // Track the listener
+    if (!this.registeredListeners.has(target)) {
+      this.registeredListeners.set(target, new Map());
+    }
+    const targetListeners = this.registeredListeners.get(target)!;
+    const key = `${type}_${this.listenerCount++}`;
+    targetListeners.set(key, [handler]);
+  }
+
+  /**
+   * Remove tracked event listener
+   */
+  private static removeTrackedListener(
+    target: EventTarget,
+    type: string,
+    handler: EventListener,
+    options?: EventListenerOptions,
+  ): void {
+    target.removeEventListener(type, handler, options);
+    
+    // Remove from tracking
+    const targetListeners = this.registeredListeners.get(target);
+    if (targetListeners) {
+      for (const [key, handlers] of targetListeners.entries()) {
+        if (handlers.includes(handler)) {
+          targetListeners.delete(key);
+          break;
+        }
+      }
+    }
+  }
+
+  /**
+   * Clean up all tracked event listeners
+   */
+  public static cleanup(): void {
+    for (const [target, listeners] of this.registeredListeners.entries()) {
+      for (const [key, handlers] of listeners.entries()) {
+        for (const handler of handlers) {
+          // Extract event type from key (format: "type_number")
+          const eventType = key.split('_')[0];
+          target.removeEventListener(eventType, handler);
+        }
+      }
+    }
+    this.registeredListeners.clear();
+    this.initialized = false;
+    
+    if (typeof ztoolkit !== "undefined") {
+      ztoolkit.log("Paper Copilot: PDF selection event listeners cleaned up");
+    }
+  }
+
+  /**
    * Set up PDF text selection listener
    */
   private static setupPDFListener(win: Window): void {
     // Method 1: Listen for mouseup events in the document
     // This catches text selection in most contexts
-    win.document.addEventListener("mouseup", (event: MouseEvent) => {
+    const mouseupHandler = (event: MouseEvent) => {
       // Delay to ensure selection is complete
       setTimeout(() => {
         this.handleTextSelection(win);
       }, 100);
-    });
+    };
+    this.addTrackedListener(win.document, "mouseup", mouseupHandler);
 
     // Method 2: Listen for Zotero reader events
     this.setupReaderListener(win);
@@ -50,9 +119,10 @@ export class PDFSelection {
    */
   private static setupReaderListener(win: Window): void {
     // Listen for Zotero's reader iframe load
-    win.addEventListener("load", () => {
+    const loadHandler = () => {
       this.setupIframeListener(win);
-    });
+    };
+    this.addTrackedListener(win, "load", loadHandler);
 
     // Try immediately in case iframe is already loaded
     setTimeout(() => {
@@ -76,11 +146,12 @@ export class PDFSelection {
       const iframeDoc = iframe.contentWindow?.document;
       if (iframeDoc) {
         // Listen for mouseup inside iframe
-        iframeDoc.addEventListener("mouseup", () => {
+        const iframeMouseupHandler = () => {
           setTimeout(() => {
             this.handleTextSelection(win);
           }, 100);
-        });
+        };
+        this.addTrackedListener(iframeDoc, "mouseup", iframeMouseupHandler);
 
         if (typeof ztoolkit !== "undefined") {
           ztoolkit.log("Paper Copilot: PDF iframe listener set up");

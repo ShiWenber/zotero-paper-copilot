@@ -5,15 +5,93 @@
  * Reference: zotero-gpt, zotero-pdf-translate
  */
 
+import { TranslationAPI, SUPPORTED_LANGUAGES } from "./translation";
+import { LLMAPI } from "./llm-api";
+import { SemanticScholarAPI, SemanticScholarPaper } from "./semantic-scholar";
+import { KnowledgeBase, CollectionDocument } from "./knowledge-base";
+import { ThemeManager } from "./theme";
+import { OnboardingManager, ErrorFormatter } from "./onboarding";
+
 export class SidebarUI {
   private static sidebarId = "zotero-paper-copilot-sidebar";
   private static sidebarWidth = 400;
+  private static currentSelectedText = "";
+  private static currentTargetLanguage = "ZH";
+  private static isAnimating = false;
+  
+  // Event listener tracking for cleanup
+  private static registeredListeners: Map<EventTarget, Map<string, EventListener[]>> = new Map();
+  private static listenerCount = 0;
+  /**
+   * Add event listener with tracking for cleanup
+   */
+  private static addTrackedListener(
+    target: EventTarget,
+    type: string,
+    handler: EventListener,
+    options?: AddEventListenerOptions,
+  ): void {
+    target.addEventListener(type, handler, options);
+    
+    // Track the listener
+    if (!this.registeredListeners.has(target)) {
+      this.registeredListeners.set(target, new Map());
+    }
+    const targetListeners = this.registeredListeners.get(target)!;
+    const key = `${type}_${this.listenerCount++}`;
+    targetListeners.set(key, [handler]);
+  }
+
+  /**
+   * Remove tracked event listener
+   */
+  private static removeTrackedListener(
+    target: EventTarget,
+    type: string,
+    handler: EventListener,
+    options?: EventListenerOptions,
+  ): void {
+    target.removeEventListener(type, handler, options);
+    
+    // Remove from tracking
+    const targetListeners = this.registeredListeners.get(target);
+    if (targetListeners) {
+      for (const [key, handlers] of targetListeners.entries()) {
+        if (handlers.includes(handler)) {
+          targetListeners.delete(key);
+          break;
+        }
+      }
+    }
+  }
+
+  /**
+   * Clean up all tracked event listeners
+   */
+  private static cleanupAllListeners(): void {
+    for (const [target, listeners] of this.registeredListeners.entries()) {
+      for (const [key, handlers] of listeners.entries()) {
+        for (const handler of handlers) {
+          // Extract event type from key (format: "type_number")
+          const eventType = key.split('_')[0];
+          target.removeEventListener(eventType, handler);
+        }
+      }
+    }
+    this.registeredListeners.clear();
+    
+    if (typeof ztoolkit !== "undefined") {
+      ztoolkit.log("Paper Copilot: All sidebar event listeners cleaned up");
+    }
+  }
 
   /**
    * Create sidebar using ztoolkit.UI
    */
   public static create(win: Window): void {
-    this.remove(win);
+    // Clean up any existing listeners first
+    this.cleanupAllListeners();
+    this.remove();
 
     const doc = win.document;
 
@@ -57,9 +135,14 @@ export class SidebarUI {
     footer.style.cssText =
       "padding: 12px 16px; border-top: 1px solid #e0e0e0; background: #f9f9f9;";
     footer.innerHTML =
-      '<div style="display: flex; gap: 8px;">' +
+      '<div style="display: flex; gap: 8px; margin-bottom: 8px;">' +
       '<button id="btn-summarize" style="flex: 1; padding: 10px 16px; background: #0066cc; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">📝 Summarize</button>' +
       '<button id="btn-translate" style="flex: 1; padding: 10px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">🌐 Translate</button>' +
+      '<button id="btn-knowledge-base" style="flex: 1; padding: 10px 16px; background: #6f42c1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">💡 Q&A</button>' +
+      "</div>" +
+      '<div style="display: flex; gap: 8px;">' +
+      '<button id="btn-recommend" style="flex: 1; padding: 10px 16px; background: #9c27b0; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">📚 Recommend</button>' +
+      '<button id="btn-search" style="flex: 1; padding: 10px 16px; background: #ff9800; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">🔍 Search</button>' +
       "</div>";
 
     // Chat area (for future AI conversation)
@@ -77,17 +160,49 @@ export class SidebarUI {
     sidebar.appendChild(footer);
     doc.body.appendChild(sidebar);
 
-    // Event listeners
-    doc
-      .getElementById("sidebar-close-btn")
-      ?.addEventListener("click", () => this.remove());
-    doc
-      .getElementById("btn-summarize")
-      ?.addEventListener("click", () => this.showSummarize(win));
-    doc
-      .getElementById("btn-translate")
-      ?.addEventListener("click", () => this.showTranslate(win));
+    // Event listeners - stored as bound methods for proper cleanup
+    const closeBtn = doc.getElementById("sidebar-close-btn");
+    if (closeBtn) {
+      const closeHandler = () => this.remove();
+      closeBtn.addEventListener("click", closeHandler);
+      this.registeredListeners.set(closeBtn, new Map([[`click_${this.listenerCount++}`, [closeHandler]]]));
+    }
 
+    const summarizeBtn = doc.getElementById("btn-summarize");
+    if (summarizeBtn) {
+      const handler = () => this.showSummarize(win);
+      summarizeBtn.addEventListener("click", handler);
+      this.registeredListeners.set(summarizeBtn, new Map([[`click_${this.listenerCount++}`, [handler]]]));
+    }
+
+    const translateBtn = doc.getElementById("btn-translate");
+    if (translateBtn) {
+      const handler = () => this.showTranslate(win);
+      translateBtn.addEventListener("click", handler);
+      this.registeredListeners.set(translateBtn, new Map([[`click_${this.listenerCount++}`, [handler]]]));
+    }
+
+    const kbBtn = doc.getElementById("btn-knowledge-base");
+    if (kbBtn) {
+      const handler = () => this.showKnowledgeBaseQA(win);
+      kbBtn.addEventListener("click", handler);
+      this.registeredListeners.set(kbBtn, new Map([[`click_${this.listenerCount++}`, [handler]]]));
+    }
+
+    const recommendBtn = doc.getElementById("btn-recommend");
+    if (recommendBtn) {
+      const handler = () => this.showRecommend(win);
+      recommendBtn.addEventListener("click", handler);
+      this.registeredListeners.set(recommendBtn, new Map([[`click_${this.listenerCount++}`, [handler]]]));
+    }
+
+    const searchBtn = doc.getElementById("btn-search");
+    if (searchBtn) {
+      const handler = () => this.showSearch(win);
+      searchBtn.addEventListener("click", handler);
+      this.registeredListeners.set(searchBtn, new Map([[`click_${this.listenerCount++}`, [handler]]]));
+    }
+    
     // Log
     if (typeof ztoolkit !== "undefined") {
       ztoolkit.log("Paper Copilot sidebar created with native HTML");
@@ -97,10 +212,12 @@ export class SidebarUI {
   /**
    * Remove sidebar
    */
-  public static remove(win: Window): void {
-    const sidebar = win.document.getElementById(this.sidebarId);
+  public static remove(): void {
+    const sidebar = document.getElementById(this.sidebarId);
     if (sidebar) {
       sidebar.remove();
+      // Clean up all tracked event listeners
+      this.cleanupAllListeners();
       if (typeof ztoolkit !== "undefined") {
         ztoolkit.log("Paper Copilot sidebar removed");
       }
@@ -111,9 +228,9 @@ export class SidebarUI {
    * Toggle sidebar
    */
   public static toggle(win: Window): void {
-    const sidebar = win.document.getElementById(this.sidebarId);
+    const sidebar = document.getElementById(this.sidebarId);
     if (sidebar) {
-      this.remove(win);
+      this.remove();
     } else {
       this.create(win);
     }
@@ -133,10 +250,177 @@ export class SidebarUI {
    * Show translate action
    */
   private static showTranslate(win: Window): void {
-    this.showMessage(
-      win,
-      "🌐 Translation feature<br><br>Select text in PDF to translate.",
+    // Check if translation API is configured
+    if (!TranslationAPI.isConfigured()) {
+      this.showTranslationConfig(win);
+      return;
+    }
+
+    const content = win.document.querySelector(
+      "#" + this.sidebarId + " > div:nth-child(2)",
     );
+    if (content) {
+      (content as HTMLElement).style.display = "block";
+
+      // Build language options
+      const langOptions = SUPPORTED_LANGUAGES.filter((l) => l.code !== "auto")
+        .map(
+          (l) =>
+            `<option value="${l.code}" ${l.code === this.currentTargetLanguage ? "selected" : ""}>${l.name}</option>`,
+        )
+        .join("");
+
+      content.innerHTML =
+        '<div style="padding: 16px;">' +
+        '<div style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 16px;">🌐 Translate</div>' +
+        '<div style="margin-bottom: 12px;">' +
+        '<label style="font-size: 13px; color: #666; display: block; margin-bottom: 4px;">Target Language:</label>' +
+        `<select id="translation-target-lang" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">${langOptions}</select>` +
+        "</div>" +
+        '<div style="margin-bottom: 12px;">' +
+        '<label style="font-size: 13px; color: #666; display: block; margin-bottom: 4px;">Enter text to translate:</label>' +
+        '<textarea id="translation-input" rows="4" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; resize: vertical; box-sizing: border-box;" placeholder="Enter or paste text here..."></textarea>' +
+        "</div>" +
+        '<button id="btn-translate-now" style="width: 100%; padding: 10px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; margin-bottom: 12px;">🌐 Translate</button>' +
+        '<div id="translation-result" style="display: none;">' +
+        '<div style="font-size: 13px; color: #666; margin-bottom: 4px;">Translation:</div>' +
+        '<div id="translation-output" style="background: #f5f5f5; padding: 12px; border-radius: 6px; font-size: 14px; line-height: 1.6; max-height: 300px; overflow-y: auto;"></div>' +
+        "</div>" +
+        '<div id="translation-loading" style="display: none; text-align: center; padding: 20px;">' +
+        '<div style="font-size: 14px; color: #666;">Translating<span id="translation-dots">...</span></div>' +
+        "</div>" +
+        "</div>";
+
+      // Add event listeners
+      win.document
+        .getElementById("translation-target-lang")
+        ?.addEventListener("change", (e) => {
+          this.currentTargetLanguage = (e.target as HTMLSelectElement).value;
+        });
+
+      win.document
+        .getElementById("btn-translate-now")
+        ?.addEventListener("click", () => {
+          const inputText = (
+            win.document.getElementById(
+              "translation-input",
+            ) as HTMLTextAreaElement
+          )?.value.trim();
+          if (!inputText) {
+            alert("Please enter text to translate");
+            return;
+          }
+          this.performTranslation(win, inputText);
+        });
+    }
+
+    // Hide chat area
+    const chatArea = win.document.getElementById("paper-copilot-chat-area");
+    if (chatArea) {
+      chatArea.style.display = "none";
+    }
+  }
+
+  /**
+   * Show translation configuration message
+   */
+  private static showTranslationConfig(win: Window): void {
+    const content = win.document.querySelector(
+      "#" + this.sidebarId + " > div:nth-child(2)",
+    );
+    if (content) {
+      (content as HTMLElement).style.display = "block";
+      content.innerHTML =
+        '<div style="padding: 20px; text-align: center;">' +
+        '<div style="font-size: 48px; margin-bottom: 16px;">⚙️</div>' +
+        '<div style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 8px;">Translation Not Configured</div>' +
+        '<div style="font-size: 14px; color: #666; margin-bottom: 16px;">To use translation, please configure your translation API in Zotero Preferences.</div>' +
+        '<div style="font-size: 13px; color: #888; text-align: left; background: #f5f5f5; padding: 12px; border-radius: 6px; margin-bottom: 16px;">' +
+        "<strong>Options:</strong><br>" +
+        "1. DeepL API (recommended) - Get API key from deepl.com/pro-api<br>" +
+        "2. Google Translate API - Get API key from cloud.google.com<br>" +
+        "3. Use LLM (fallback) - Requires OpenAI or Claude API configured" +
+        "</div>" +
+        '<button id="btn-check-llm-config" style="width: 100%; padding: 10px 16px; background: #0066cc; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">Check LLM Configuration</button>' +
+        "</div>";
+
+      win.document
+        .getElementById("btn-check-llm-config")
+        ?.addEventListener("click", () => {
+          if (LLMAPI.isConfigured()) {
+            this.showMessage(
+              win,
+              "✅ LLM is configured! You can use LLM-based translation. The translation feature will use your LLM API as fallback.",
+            );
+          } else {
+            this.showMessage(
+              win,
+              "❌ LLM is not configured. Please configure at least one translation API or LLM API in Preferences.",
+            );
+          }
+        });
+    }
+  }
+
+  /**
+   * Perform translation
+   */
+  private static async performTranslation(
+    win: Window,
+    text: string,
+  ): Promise<void> {
+    const resultDiv = win.document.getElementById("translation-result");
+    const loadingDiv = win.document.getElementById("translation-loading");
+    const outputDiv = win.document.getElementById("translation-output");
+
+    if (resultDiv && loadingDiv && outputDiv) {
+      resultDiv.style.display = "none";
+      loadingDiv.style.display = "block";
+
+      // Animate loading dots
+      let dotCount = 0;
+      const dotsInterval = setInterval(() => {
+        const dotsEl = win.document.getElementById("translation-dots");
+        if (dotsEl) {
+          dotCount = (dotCount + 1) % 4;
+          dotsEl.textContent = ".".repeat(dotCount);
+        }
+      }, 300);
+
+      try {
+        let fullTranslation = "";
+
+        await TranslationAPI.translate(text, {
+          targetLanguage: this.currentTargetLanguage,
+          stream: {
+            onChunk: (chunk) => {
+              fullTranslation += chunk;
+              outputDiv.innerHTML = fullTranslation.replace(/\n/g, "<br>");
+              // Scroll to bottom
+              outputDiv.scrollTop = outputDiv.scrollHeight;
+            },
+            onComplete: (fullContent) => {
+              fullTranslation = fullContent;
+            },
+            onError: (error) => {
+              clearInterval(dotsInterval);
+              loadingDiv.style.display = "none";
+              outputDiv.innerHTML = `<span style="color: red;">Error: ${error.message}</span>`;
+              resultDiv.style.display = "block";
+            },
+          },
+        });
+
+        clearInterval(dotsInterval);
+        loadingDiv.style.display = "none";
+        resultDiv.style.display = "block";
+      } catch (error) {
+        clearInterval(dotsInterval);
+        loadingDiv.style.display = "none";
+        outputDiv.innerHTML = `<span style="color: red;">Error: ${(error as Error).message}</span>`;
+        resultDiv.style.display = "block";
+      }
+    }
   }
 
   /**
@@ -204,6 +488,8 @@ export class SidebarUI {
    * Show selected text in sidebar (called from PDF selection)
    */
   public static showSelectedText(win: Window, text: string): void {
+    this.currentSelectedText = text;
+
     const content = win.document.querySelector(
       "#" + this.sidebarId + " > div:nth-child(2)",
     );
@@ -216,34 +502,785 @@ export class SidebarUI {
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
 
+      // Build language options
+      const langOptions = SUPPORTED_LANGUAGES.filter((l) => l.code !== "auto")
+        .map(
+          (l) =>
+            `<option value="${l.code}" ${l.code === this.currentTargetLanguage ? "selected" : ""}>${l.name}</option>`,
+        )
+        .join("");
+
       content.innerHTML =
         '<div style="padding: 16px;">' +
         '<div style="font-size: 12px; color: #999; margin-bottom: 8px;">Selected Text:</div>' +
-        '<div style="background: #f5f5f5; padding: 12px; border-radius: 6px; font-size: 14px; line-height: 1.6; margin-bottom: 16px; max-height: 200px; overflow-y: auto;">' +
+        '<div style="background: #f5f5f5; padding: 12px; border-radius: 6px; font-size: 14px; line-height: 1.6; margin-bottom: 16px; max-height: 200px; overflow-y: auto; white-space: pre-wrap;">' +
         escapedText +
+        "</div>" +
+        '<div style="margin-bottom: 12px;">' +
+        `<label style="font-size: 13px; color: #666; display: block; margin-bottom: 4px;">Translate to:</label>` +
+        `<select id="selection-translate-lang" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 8px;">${langOptions}</select>` +
         "</div>" +
         '<div style="display: flex; gap: 8px;">' +
         '<button id="btn-ask-about-selection" style="flex: 1; padding: 10px 16px; background: #0066cc; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">💬 Ask AI</button>' +
         '<button id="btn-translate-selection" style="flex: 1; padding: 10px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">🌐 Translate</button>' +
         "</div>" +
+        '<div id="selection-translation-result" style="display: none; margin-top: 16px;">' +
+        '<div style="font-size: 13px; color: #666; margin-bottom: 4px;">Translation:</div>' +
+        '<div id="selection-translation-output" style="background: #e8f5e9; padding: 12px; border-radius: 6px; font-size: 14px; line-height: 1.6; max-height: 300px; overflow-y: auto;"></div>' +
+        "</div>" +
+        '<div id="selection-translation-loading" style="display: none; text-align: center; padding: 20px; color: #666;">Translating...</div>' +
         "</div>";
+
+      // Add language change listener
+      win.document
+        .getElementById("selection-translate-lang")
+        ?.addEventListener("change", (e) => {
+          this.currentTargetLanguage = (e.target as HTMLSelectElement).value;
+        });
 
       win.document
         .getElementById("btn-ask-about-selection")
         ?.addEventListener("click", () => {
-          this.showMessage(win, "🤖 AI Question feature coming soon!");
+          this.askAIAboutSelection(win, text);
         });
 
       win.document
         .getElementById("btn-translate-selection")
         ?.addEventListener("click", () => {
-          this.showMessage(win, "🌐 Translation feature coming soon!");
+          this.translateSelectedText(win, text);
         });
     }
 
     const chatArea = win.document.getElementById("paper-copilot-chat-area");
     if (chatArea) {
       chatArea.style.display = "none";
+    }
+  }
+
+  /**
+   * Translate selected text
+   */
+  private static async translateSelectedText(
+    win: Window,
+    text: string,
+  ): Promise<void> {
+    const resultDiv = win.document.getElementById(
+      "selection-translation-result",
+    );
+    const loadingDiv = win.document.getElementById(
+      "selection-translation-loading",
+    );
+    const outputDiv = win.document.getElementById(
+      "selection-translation-output",
+    );
+
+    if (!resultDiv || !loadingDiv || !outputDiv) {
+      return;
+    }
+
+    // Check if translation API is configured
+    if (!TranslationAPI.isConfigured()) {
+      // Try using LLM as fallback
+      if (!LLMAPI.isConfigured()) {
+        alert(
+          "Translation not configured. Please set up DeepL, Google Translate, or LLM API in Preferences.",
+        );
+        return;
+      }
+    }
+
+    resultDiv.style.display = "none";
+    loadingDiv.style.display = "block";
+
+    try {
+      let fullTranslation = "";
+
+      await TranslationAPI.translate(text, {
+        targetLanguage: this.currentTargetLanguage,
+        stream: {
+          onChunk: (chunk) => {
+            fullTranslation += chunk;
+            outputDiv.innerHTML = fullTranslation.replace(/\n/g, "<br>");
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+          },
+          onComplete: (fullContent) => {
+            fullTranslation = fullContent;
+          },
+          onError: (error) => {
+            loadingDiv.style.display = "none";
+            outputDiv.innerHTML = `<span style="color: red;">Error: ${error.message}</span>`;
+            resultDiv.style.display = "block";
+          },
+        },
+      });
+
+      loadingDiv.style.display = "none";
+      resultDiv.style.display = "block";
+    } catch (error) {
+      loadingDiv.style.display = "none";
+      outputDiv.innerHTML = `<span style="color: red;">Error: ${(error as Error).message}</span>`;
+      resultDiv.style.display = "block";
+    }
+  }
+
+  /**
+   * Ask AI about selected text
+   */
+  private static async askAIAboutSelection(
+    win: Window,
+    text: string,
+  ): Promise<void> {
+    // Check if LLM API is configured
+    if (!LLMAPI.isConfigured()) {
+      // Try to load from prefs
+      LLMAPI.loadFromPrefs();
+      if (!LLMAPI.isConfigured()) {
+        alert(
+          "LLM API not configured. Please configure your API key in Paper Copilot preferences.",
+        );
+        return;
+      }
+    }
+
+    // Create a result area for AI response
+    const content = win.document.querySelector(
+      "#" + this.sidebarId + " > div:nth-child(2)",
+    );
+    if (!content) return;
+
+    // Add loading indicator and result area after the translate button
+    let container = win.document.getElementById("ai-response-container");
+    if (!container) {
+      container = win.document.createElement("div");
+      container.id = "ai-response-container";
+      container.style.cssText = "margin-top: 16px;";
+      content.appendChild(container);
+    }
+
+    container.innerHTML =
+      '<div id="ai-loading" style="text-align: center; padding: 20px; color: #666;">🤔 Thinking...</div>' +
+      '<div id="ai-result" style="display: none;"></div>' +
+      '<div id="ai-error" style="display: none; color: red; padding: 12px; background: #ffebee; border-radius: 6px;"></div>';
+
+    const loadingDiv = win.document.getElementById("ai-loading");
+    const resultDiv = win.document.getElementById("ai-result");
+    const errorDiv = win.document.getElementById("ai-error");
+
+    if (!loadingDiv || !resultDiv || !errorDiv) return;
+
+    try {
+      // Build context with selected text
+      const messages = [
+        {
+          role: "system" as const,
+          content: `You are a helpful academic research assistant. 
+Explain the following text from a scientific paper clearly and accurately.
+Provide context about technical terms if needed.
+Keep your answer concise but informative.`,
+        },
+        {
+          role: "user" as const,
+          content: `Please explain or answer questions about this text:\n\n"${text}"`,
+        },
+      ];
+
+      let fullResponse = "";
+
+      await LLMAPI.chat(messages, {
+        stream: {
+          onChunk: (chunk: string) => {
+            fullResponse += chunk;
+            loadingDiv.textContent = "🤔 " + fullResponse.substring(0, 50) + (fullResponse.length > 50 ? "..." : "");
+          },
+          onComplete: (fullContent: string) => {
+            loadingDiv.style.display = "none";
+            resultDiv.style.display = "block";
+            resultDiv.innerHTML = `<div style="background: #e8f5e9; padding: 12px; border-radius: 6px; font-size: 14px; line-height: 1.6;">${fullResponse.replace(/\n/g, "<br>")}</div>`;
+          },
+          onError: (error: Error) => {
+            loadingDiv.style.display = "none";
+            errorDiv.style.display = "block";
+            errorDiv.textContent = `Error: ${error.message}`;
+          },
+        },
+      });
+    } catch (error) {
+      loadingDiv.style.display = "none";
+      errorDiv.style.display = "block";
+      errorDiv.textContent = `Error: ${(error as Error).message}`;
+    }
+  }
+
+  /**
+   * Show recommendation panel
+   */
+  public static showRecommend(win: Window): void {
+    const content = win.document.querySelector(
+      "#" + this.sidebarId + " > div:nth-child(2)",
+    );
+    if (content) {
+      (content as HTMLElement).style.display = "block";
+
+      content.innerHTML =
+        '<div style="padding: 16px;">' +
+        '<div style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 16px;">📚 Paper Recommendations</div>' +
+        '<div style="margin-bottom: 12px;">' +
+        '<label style="font-size: 13px; color: #666; display: block; margin-bottom: 4px;">Search or enter paper DOI/ArXiv ID:</label>' +
+        '<input id="recommend-search-input" type="text" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box;" placeholder="e.g., 10.1234/example or 2301.12345">' +
+        "</div>" +
+        '<div style="display: flex; gap: 8px; margin-bottom: 16px;">' +
+        '<button id="btn-get-recommendations" style="flex: 1; padding: 10px 16px; background: #9c27b0; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">🔎 Get Recommendations</button>' +
+        "</div>" +
+        '<div id="recommendations-loading" style="display: none; text-align: center; padding: 20px; color: #666;">Loading recommendations...</div>' +
+        '<div id="recommendations-result" style="display: none;"></div>' +
+        '<div id="recommendations-error" style="display: none; color: red; padding: 12px; background: #ffebee; border-radius: 6px;"></div>' +
+        "</div>";
+
+      // Add event listener
+      win.document
+        .getElementById("btn-get-recommendations")
+        ?.addEventListener("click", async () => {
+          const input = win.document.getElementById(
+            "recommend-search-input",
+          ) as HTMLInputElement;
+          const query = input?.value.trim();
+
+          if (!query) {
+            alert("Please enter a paper title, DOI, or ArXiv ID");
+            return;
+          }
+
+          await this.fetchRecommendations(win, query);
+        });
+
+      // Allow Enter key to search
+      win.document
+        .getElementById("recommend-search-input")
+        ?.addEventListener("keypress", async (e) => {
+          if (e.key === "Enter") {
+            const input = e.target as HTMLInputElement;
+            const query = input.value.trim();
+
+            if (!query) {
+              return;
+            }
+
+            await this.fetchRecommendations(win, query);
+          }
+        });
+    }
+
+    // Hide chat area
+    const chatArea = win.document.getElementById("paper-copilot-chat-area");
+    if (chatArea) {
+      chatArea.style.display = "none";
+    }
+  }
+
+  /**
+   * Fetch recommendations from Semantic Scholar
+   */
+  private static async fetchRecommendations(
+    win: Window,
+    query: string,
+  ): Promise<void> {
+    const loadingDiv = win.document.getElementById("recommendations-loading");
+    const resultDiv = win.document.getElementById("recommendations-result");
+    const errorDiv = win.document.getElementById("recommendations-error");
+
+    if (!loadingDiv || !resultDiv || !errorDiv) return;
+
+    loadingDiv.style.display = "block";
+    resultDiv.style.display = "none";
+    errorDiv.style.display = "none";
+
+    try {
+      let papers: SemanticScholarPaper[] = [];
+
+      // Check if it's a DOI or ArXiv ID
+      if (query.includes("10.") && query.includes("/")) {
+        // Likely a DOI
+        const paper = await SemanticScholarAPI.getPaperByDOI(query);
+        if (paper) {
+          // Get related papers
+          const related = await SemanticScholarAPI.getRelatedPapers(
+            paper.paperId,
+            { limit: 10 },
+          );
+          papers = related.data;
+        }
+      } else if (query.match(/^\d{4}\.\d{4,5}$/)) {
+        // Likely ArXiv ID
+        const paper = await SemanticScholarAPI.getPaperByArXiv(query);
+        if (paper) {
+          const related = await SemanticScholarAPI.getRelatedPapers(
+            paper.paperId,
+            { limit: 10 },
+          );
+          papers = related.data;
+        }
+      } else {
+        // Search by title/query
+        const searchResult = await SemanticScholarAPI.searchPapers(query, {
+          limit: 10,
+        });
+        papers = searchResult.data;
+      }
+
+      loadingDiv.style.display = "none";
+
+      if (papers.length === 0) {
+        resultDiv.innerHTML =
+          '<div style="text-align: center; padding: 20px; color: #666;">No papers found. Try a different search term.</div>';
+        resultDiv.style.display = "block";
+        return;
+      }
+
+      // Render papers
+      this.renderRecommendations(win, papers);
+    } catch (error) {
+      loadingDiv.style.display = "none";
+      errorDiv.textContent = `Error: ${(error as Error).message}`;
+      errorDiv.style.display = "block";
+    }
+  }
+
+  /**
+   * Render recommendation list
+   */
+  private static renderRecommendations(
+    win: Window,
+    papers: SemanticScholarPaper[],
+  ): void {
+    const resultDiv = win.document.getElementById("recommendations-result");
+    if (!resultDiv) return;
+
+    const papersHtml = papers
+      .map((paper, index) => {
+        const info = SemanticScholarAPI.formatPaperForDisplay(paper);
+        return `
+        <div style="background: #f9f9f9; border-radius: 8px; padding: 12px; margin-bottom: 12px; border-left: 4px solid #9c27b0;">
+          <div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 4px; line-height: 1.4;">
+            <a href="${info.url}" target="_blank" style="color: #0066cc; text-decoration: none;">${info.title}</a>
+          </div>
+          <div style="font-size: 12px; color: #666; margin-bottom: 4px;">${info.authors}</div>
+          <div style="font-size: 12px; color: #888;">
+            <span>${info.year}</span> · 
+            <span>${info.citations} citations</span> · 
+            <span>${info.venue}</span>
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 8px;">
+            <button class="btn-view-paper" data-url="${info.url}" style="padding: 6px 12px; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">View Paper</button>
+            <button class="btn-add-to-zotero" data-paper-id="${paper.paperId}" data-title="${encodeURIComponent(paper.title)}" data-doi="${paper.doi || ""}" data-url="${info.url}" style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Add to Zotero</button>
+          </div>
+        </div>
+      `;
+      })
+      .join("");
+
+    resultDiv.innerHTML =
+      '<div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px;">Related Papers:</div>' +
+      papersHtml;
+    resultDiv.style.display = "block";
+
+    // Add event listeners for buttons
+    resultDiv.querySelectorAll(".btn-view-paper").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const url = (e.target as HTMLElement).getAttribute("data-url");
+        if (url) {
+          Zotero.LaunchURL(url);
+        }
+      });
+    });
+
+    resultDiv.querySelectorAll(".btn-add-to-zotero").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const paperId = (e.target as HTMLElement).getAttribute("data-paper-id");
+        const title = decodeURIComponent(
+          (e.target as HTMLElement).getAttribute("data-title") || "",
+        );
+        const doi = (e.target as HTMLElement).getAttribute("data-doi") || "";
+        const url = (e.target as HTMLElement).getAttribute("data-url") || "";
+
+        this.addPaperToZotero(win, { paperId, title, doi, url });
+      });
+    });
+  }
+
+  /**
+   * Add paper to Zotero library
+   */
+  private static addPaperToZotero(
+    win: Window,
+    paper: { paperId: string; title: string; doi: string; url: string },
+  ): void {
+    try {
+      // Create a new item
+      const item = new Zotero.Item("journalArticle");
+      item.setField("title", paper.title);
+
+      if (paper.doi) {
+        item.setField("DOI", paper.doi);
+      }
+
+      if (paper.url) {
+        item.setField("url", paper.url);
+      }
+
+      item.setField("accessDate", new Date().toISOString());
+
+      // Save the item
+      item.save();
+
+      // Show success message
+      const resultDiv = win.document.getElementById("recommendations-result");
+      if (resultDiv) {
+        const successMsg = document.createElement("div");
+        successMsg.style.cssText =
+          "background: #e8f5e9; color: #2e7d32; padding: 12px; border-radius: 6px; margin-bottom: 12px; font-size: 14px;";
+        successMsg.textContent = `✅ "${paper.title.substring(0, 50)}..." added to your Zotero library!`;
+        resultDiv.insertBefore(successMsg, resultDiv.firstChild);
+      }
+
+      if (typeof ztoolkit !== "undefined") {
+        ztoolkit.log("Paper Copilot: Paper added to Zotero:", paper.title);
+      }
+    } catch (error) {
+      if (typeof ztoolkit !== "undefined") {
+        ztoolkit.log("Paper Copilot: Error adding paper to Zotero:", error);
+      }
+      alert(`Error adding paper to Zotero: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Show search panel
+   */
+  public static showSearch(win: Window): void {
+    const content = win.document.querySelector(
+      "#" + this.sidebarId + " > div:nth-child(2)",
+    );
+    if (content) {
+      (content as HTMLElement).style.display = "block";
+
+      content.innerHTML =
+        '<div style="padding: 16px;">' +
+        '<div style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 16px;">🔍 Search Papers</div>' +
+        '<div style="margin-bottom: 12px;">' +
+        '<label style="font-size: 13px; color: #666; display: block; margin-bottom: 4px;">Search Semantic Scholar:</label>' +
+        '<input id="paper-search-input" type="text" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box;" placeholder="Enter paper title, author, or keywords...">' +
+        "</div>" +
+        '<div style="display: flex; gap: 8px; margin-bottom: 16px;">' +
+        '<button id="btn-search-papers" style="flex: 1; padding: 10px 16px; background: #ff9800; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">🔍 Search</button>' +
+        "</div>" +
+        '<div id="search-loading" style="display: none; text-align: center; padding: 20px; color: #666;">Searching...</div>' +
+        '<div id="search-result" style="display: none;"></div>' +
+        '<div id="search-error" style="display: none; color: red; padding: 12px; background: #ffebee; border-radius: 6px;"></div>' +
+        "</div>";
+
+      // Add event listener
+      win.document
+        .getElementById("btn-search-papers")
+        ?.addEventListener("click", async () => {
+          const input = win.document.getElementById(
+            "paper-search-input",
+          ) as HTMLInputElement;
+          const query = input?.value.trim();
+
+          if (!query) {
+            alert("Please enter a search query");
+            return;
+          }
+
+          await this.searchPapers(win, query);
+        });
+
+      // Allow Enter key to search
+      win.document
+        .getElementById("paper-search-input")
+        ?.addEventListener("keypress", async (e) => {
+          if (e.key === "Enter") {
+            const input = e.target as HTMLInputElement;
+            const query = input.value.trim();
+
+            if (!query) {
+              return;
+            }
+
+            await this.searchPapers(win, query);
+          }
+        });
+    }
+
+    // Hide chat area
+    const chatArea = win.document.getElementById("paper-copilot-chat-area");
+    if (chatArea) {
+      chatArea.style.display = "none";
+    }
+  }
+
+  /**
+   * Search papers from Semantic Scholar
+   */
+  private static async searchPapers(win: Window, query: string): Promise<void> {
+    const loadingDiv = win.document.getElementById("search-loading");
+    const resultDiv = win.document.getElementById("search-result");
+    const errorDiv = win.document.getElementById("search-error");
+
+    if (!loadingDiv || !resultDiv || !errorDiv) return;
+
+    loadingDiv.style.display = "block";
+    resultDiv.style.display = "none";
+    errorDiv.style.display = "none";
+
+    try {
+      const searchResult = await SemanticScholarAPI.searchPapers(query, {
+        limit: 15,
+      });
+
+      loadingDiv.style.display = "none";
+
+      if (searchResult.data.length === 0) {
+        resultDiv.innerHTML =
+          '<div style="text-align: center; padding: 20px; color: #666;">No papers found. Try a different search term.</div>';
+        resultDiv.style.display = "block";
+        return;
+      }
+
+      // Render papers (reuse the same rendering logic)
+      this.renderRecommendations(win, searchResult.data);
+    } catch (error) {
+      loadingDiv.style.display = "none";
+      errorDiv.textContent = `Error: ${(error as Error).message}`;
+      errorDiv.style.display = "block";
+    }
+  }
+
+  /**
+   * Show Knowledge Base Q&A interface
+   */
+  public static async showKnowledgeBaseQA(win: Window): Promise<void> {
+    const content = win.document.querySelector(
+      "#" + this.sidebarId + " > div:nth-child(2)",
+    );
+    if (!content) return;
+
+    // Check if LLM is configured
+    if (!LLMAPI.isConfigured()) {
+      this.showMessage(
+        win,
+        '<div style="text-align: center; padding: 20px;">' +
+          '<div style="font-size: 24px; margin-bottom: 16px;">⚠️</div>' +
+          '<div style="font-size: 16px; margin-bottom: 8px; color: #d32f2f;">LLM API Not Configured</div>' +
+          '<div style="font-size: 14px; color: #666;">Please configure your API key in Paper Copilot preferences to use the Knowledge Base Q&A feature.</div>' +
+          "</div>",
+      );
+      return;
+    }
+
+    // Show loading first
+    (content as HTMLElement).style.display = "block";
+    content.innerHTML =
+      '<div style="padding: 40px 20px; text-align: center;"><div style="font-size: 16px;">Loading knowledge base...</div></div>';
+
+    try {
+      // Get library stats
+      const stats = await KnowledgeBase.getCollectionStats();
+
+      // Hide chat area
+      const chatArea = win.document.getElementById("paper-copilot-chat-area");
+      if (chatArea) {
+        chatArea.style.display = "none";
+      }
+
+      // Build stats display
+      const yearStats = Object.entries(stats.byYear)
+        .sort((a, b) => Number(b[0]) - Number(a[0]))
+        .slice(0, 5)
+        .map(
+          ([year, count]) =>
+            `<span style="background: #e3f2fd; padding: 2px 8px; border-radius: 4px; margin: 2px; font-size: 12px;">${year}: ${count}</span>`,
+        )
+        .join(" ");
+
+      const typeStats = Object.entries(stats.byType)
+        .map(
+          ([type, count]) =>
+            `<span style="background: #f5f5f5; padding: 2px 8px; border-radius: 4px; margin: 2px; font-size: 12px;">${type}: ${count}</span>`,
+        )
+        .join(" ");
+
+      const tagStats = stats.topTags
+        .slice(0, 8)
+        .map(
+          (t) =>
+            `<span style="background: #fff3e0; padding: 2px 8px; border-radius: 4px; margin: 2px; font-size: 12px;">${t.tag} (${t.count})</span>`,
+        )
+        .join(" ");
+
+      content.innerHTML =
+        '<div style="padding: 16px;">' +
+        '<div style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #333;">💡 Ask about your library</div>' +
+        // Stats summary
+        '<div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 16px;">' +
+        `<div style="font-size: 14px; margin-bottom: 8px;"><strong>📚 ${stats.totalPapers} papers</strong> in your library</div>` +
+        (yearStats
+          ? `<div style="font-size: 12px; margin-bottom: 8px; color: #666;">Years: ${yearStats}</div>`
+          : "") +
+        (typeStats
+          ? `<div style="font-size: 12px; margin-bottom: 8px; color: #666;">Types: ${typeStats}</div>`
+          : "") +
+        (tagStats
+          ? `<div style="font-size: 12px; color: #666;">Tags: ${tagStats}</div>`
+          : "") +
+        "</div>" +
+        // Question input
+        '<div style="margin-bottom: 12px;">' +
+        '<textarea id="kb-question" rows="3" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical; box-sizing: border-box;" placeholder="Ask a question about your papers... (e.g., What are the main topics in my library?)"></textarea>' +
+        "</div>" +
+        '<div style="display: flex; gap: 8px; margin-bottom: 16px;">' +
+        '<button id="btn-ask-kb" style="flex: 1; padding: 12px 16px; background: #6f42c1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">🔍 Ask</button>' +
+        '<button id="btn-clear-kb-chat" style="padding: 12px 16px; background: #f5f5f5; color: #666; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; font-size: 14px;">🗑️ Clear</button>' +
+        "</div>" +
+        // Chat container
+        '<div id="kb-chat-container" style="max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; padding: 12px; background: #fafafa;"></div>' +
+        "</div>";
+
+      // Event listeners
+      win.document
+        .getElementById("btn-ask-kb")
+        ?.addEventListener("click", async () => {
+          const questionInput = win.document.getElementById(
+            "kb-question",
+          ) as HTMLTextAreaElement;
+          const question = questionInput?.value.trim();
+
+          if (!question) {
+            return;
+          }
+
+          await this.handleKBQuestion(win, question);
+        });
+
+      win.document
+        .getElementById("btn-clear-kb-chat")
+        ?.addEventListener("click", () => {
+          const container = win.document.getElementById("kb-chat-container");
+          if (container) {
+            container.innerHTML = "";
+          }
+        });
+
+      // Allow Enter to submit (Shift+Enter for newline)
+      const questionTextarea = win.document.getElementById(
+        "kb-question",
+      ) as HTMLTextAreaElement;
+      questionTextarea?.addEventListener("keydown", (e: KeyboardEvent) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          win.document.getElementById("btn-ask-kb")?.click();
+        }
+      });
+    } catch (e: any) {
+      this.showMessage(win, `Error loading knowledge base: ${e.message}`);
+    }
+  }
+
+  /**
+   * Handle knowledge base question submission
+   */
+  private static async handleKBQuestion(
+    win: Window,
+    question: string,
+  ): Promise<void> {
+    const container = win.document.getElementById("kb-chat-container");
+    if (!container) return;
+
+    // Add user question
+    const userMsg = win.document.createElement("div");
+    userMsg.style.cssText =
+      "padding: 12px; background: #e3f2fd; border-radius: 8px; margin-bottom: 12px; font-size: 14px;";
+    userMsg.textContent = question;
+    container.appendChild(userMsg);
+
+    // Add loading indicator
+    const loadingMsg = win.document.createElement("div");
+    loadingMsg.id = "kb-loading";
+    loadingMsg.style.cssText =
+      "padding: 12px; background: #f5f5f5; border-radius: 8px; margin-bottom: 12px; font-size: 14px; color: #666;";
+    loadingMsg.textContent = "🤔 Searching and thinking...";
+    container.appendChild(loadingMsg);
+
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
+
+    try {
+      let fullAnswer = "";
+
+      // Stream the answer
+      const result = await KnowledgeBase.askQuestion(question, undefined, {
+        maxDocuments: 5,
+        stream: (chunk: string) => {
+          fullAnswer += chunk;
+          loadingMsg.textContent =
+            "🤔 " +
+            fullAnswer.substring(0, 100) +
+            (fullAnswer.length > 100 ? "..." : "");
+        },
+      });
+
+      // Remove loading indicator
+      loadingMsg.remove();
+
+      // Add answer
+      const answerMsg = win.document.createElement("div");
+      answerMsg.style.cssText =
+        "padding: 12px; background: #f5f5f5; border-radius: 8px; margin-bottom: 12px; font-size: 14px; line-height: 1.6;";
+
+      // Format the answer with line breaks
+      const formattedAnswer = result.answer
+        .replace(/\n\n/g, "</p><p>")
+        .replace(/\n/g, "<br>");
+
+      answerMsg.innerHTML = `<p>${formattedAnswer}</p>`;
+
+      // Add sources if available
+      if (result.sources.length > 0) {
+        const sourcesDiv = win.document.createElement("div");
+        sourcesDiv.style.cssText =
+          "margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 12px; color: #666;";
+        sourcesDiv.innerHTML =
+          "<strong>📚 Sources:</strong><br>" +
+          result.sources
+            .slice(0, 3)
+            .map(
+              (s) =>
+                `• ${s.title.substring(0, 60)}${s.title.length > 60 ? "..." : ""}`,
+            )
+            .join("<br>");
+        answerMsg.appendChild(sourcesDiv);
+      }
+
+      container.appendChild(answerMsg);
+    } catch (e: any) {
+      loadingMsg.remove();
+
+      const errorMsg = win.document.createElement("div");
+      errorMsg.style.cssText =
+        "padding: 12px; background: #ffebee; border-radius: 8px; margin-bottom: 12px; font-size: 14px; color: #c62828;";
+      errorMsg.textContent = `Error: ${e.message}`;
+      container.appendChild(errorMsg);
+    }
+
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
+
+    // Clear input
+    const questionInput = win.document.getElementById(
+      "kb-question",
+    ) as HTMLTextAreaElement;
+    if (questionInput) {
+      questionInput.value = "";
     }
   }
 }
