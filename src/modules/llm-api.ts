@@ -1,70 +1,39 @@
 /**
  * Zotero Paper Copilot - LLM API Module
  *
- * Handles LLM API calls with streaming support
- * Supports OpenAI-compatible APIs
+ * Unified LLM API module supporting multiple providers (OpenAI, Anthropic).
+ * Provides streaming support and configuration management.
+ * 
+ * Note: This module was cleaned up to remove duplicate type definitions.
+ * The old MiniMax-specific functions have been removed in favor of the
+ * LLMAPI class which provides a cleaner, provider-agnostic interface.
  */
 
 import { getPref, setPref } from "../utils/prefs";
 
-export interface LLMMessage {
-  role: "system" | "user" | "assistant";
-  content: string;
-}
-
-export interface LLMRequest {
-  model: string;
-  messages: LLMMessage[];
-  stream?: boolean;
-  temperature?: number;
-  max_tokens?: number;
-  presence_penalty?: number;
-  frequency_penalty?: number;
-}
-
-export interface LLMResponse {
-  id: string;
-  model: string;
-  choices: {
-    index: number;
-    message: LLMMessage;
-    finish_reason: string;
-  }[];
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
-}
-
-export interface StreamChunk {
-  id: string;
-  choices: {
-    index: number;
-    delta: {
-      content?: string;
-      role?: string;
-    };
-    finish_reason?: string;
-  }[];
-}
-
-export type StreamCallback = (
-  chunk: StreamChunk,
-  fullContent: string,
-) => void | Promise<void>;
-
-/**
- * Extended LLM API with provider support (from feature/translation)
- */
-export type LLMProvider = "openai" | "anthropic";
+// ============== Type Definitions (Unified) ==============
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
 }
 
-export interface ExtendedLLMResponse {
+/**
+ * @deprecated Use ChatMessage instead
+ */
+export type LLMMessage = ChatMessage;
+
+export type LLMProvider = "openai" | "anthropic";
+
+export interface LLMConfig {
+  provider: LLMProvider;
+  apiKey: string;
+  model: string;
+  maxTokens?: number;
+  temperature?: number;
+}
+
+export interface LLMResponse {
   content: string;
   model: string;
   usage?: {
@@ -74,20 +43,22 @@ export interface ExtendedLLMResponse {
   };
 }
 
-export interface ExtendedStreamCallback {
+export interface StreamCallback {
   (chunk: string): void;
   onComplete?: (fullContent: string) => void;
   onError?: (error: Error) => void;
   onChunk?: (chunk: string) => void;
 }
 
+// ============== LLM API Class ==============
+
 export class LLMAPI {
-  private static config: ExtendedLLMConfig | null = null;
+  private static config: LLMConfig | null = null;
 
   /**
    * Initialize LLM API with configuration
    */
-  public static init(config: ExtendedLLMConfig): void {
+  public static init(config: LLMConfig): void {
     this.config = config;
 
     if (typeof ztoolkit !== "undefined") {
@@ -101,7 +72,7 @@ export class LLMAPI {
   /**
    * Get current configuration
    */
-  public static getConfig(): ExtendedLLMConfig | null {
+  public static getConfig(): LLMConfig | null {
     return this.config;
   }
 
@@ -143,7 +114,7 @@ export class LLMAPI {
   /**
    * Save configuration to Zotero preferences
    */
-  public static saveToPrefs(config: ExtendedLLMConfig): void {
+  public static saveToPrefs(config: LLMConfig): void {
     try {
       Zotero.Prefs.set("paper-copilot.llm-provider", config.provider);
       Zotero.Prefs.set("paper-copilot.llm-api-key", config.apiKey);
@@ -182,11 +153,11 @@ export class LLMAPI {
   public static async chat(
     messages: ChatMessage[],
     options?: {
-      stream?: ExtendedStreamCallback;
+      stream?: StreamCallback;
       temperature?: number;
       maxTokens?: number;
     },
-  ): Promise<ExtendedLLMResponse> {
+  ): Promise<LLMResponse> {
     if (!this.config) {
       throw new Error("LLM API not configured");
     }
@@ -210,9 +181,9 @@ export class LLMAPI {
    */
   public static async streamChat(
     messages: ChatMessage[],
-    callback: ExtendedStreamCallback,
+    callback: StreamCallback,
     options?: { temperature?: number; maxTokens?: number },
-  ): Promise<ExtendedLLMResponse> {
+  ): Promise<LLMResponse> {
     if (!this.config) {
       throw new Error("LLM API not configured");
     }
@@ -238,8 +209,8 @@ export class LLMAPI {
       onError?: (error: Error) => void;
     },
     options?: { temperature?: number; maxTokens?: number },
-  ): Promise<ExtendedLLMResponse> {
-    const callback: ExtendedStreamCallback = (chunk: string) => {
+  ): Promise<LLMResponse> {
+    const callback: StreamCallback = (chunk: string) => {
       callbacks.onChunk?.(chunk);
     };
     callback.onComplete = callbacks.onComplete;
@@ -254,7 +225,7 @@ export class LLMAPI {
   private static async openAIChat(
     messages: ChatMessage[],
     options?: { temperature?: number; maxTokens?: number },
-  ): Promise<ExtendedLLMResponse> {
+  ): Promise<LLMResponse> {
     const config = this.config!;
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -276,12 +247,16 @@ export class LLMAPI {
       throw new Error(`OpenAI API error: ${response.status} - ${error}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as any;
 
     return {
       content: data.choices[0]?.message?.content || "",
       model: data.model,
-      usage: data.usage,
+      usage: data.usage ? {
+        promptTokens: data.usage.prompt_tokens,
+        completionTokens: data.usage.completion_tokens,
+        totalTokens: data.usage.total_tokens,
+      } : undefined,
     };
   }
 
@@ -290,9 +265,9 @@ export class LLMAPI {
    */
   private static async openAIStreamChat(
     messages: ChatMessage[],
-    callback: ExtendedStreamCallback,
+    callback: StreamCallback,
     options?: { temperature?: number; maxTokens?: number },
-  ): Promise<ExtendedLLMResponse> {
+  ): Promise<LLMResponse> {
     const config = this.config!;
     let fullContent = "";
 
@@ -368,7 +343,7 @@ export class LLMAPI {
   private static async anthropicChat(
     messages: ChatMessage[],
     options?: { temperature?: number; maxTokens?: number },
-  ): Promise<ExtendedLLMResponse> {
+  ): Promise<LLMResponse> {
     const config = this.config!;
 
     // Convert messages to Anthropic format
@@ -399,16 +374,16 @@ export class LLMAPI {
       throw new Error(`Anthropic API error: ${response.status} - ${error}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as any;
 
     return {
       content: data.content[0]?.text || "",
       model: data.model,
-      usage: {
+      usage: data.usage ? {
         promptTokens: data.usage.input_tokens,
         completionTokens: data.usage.output_tokens,
         totalTokens: data.usage.input_tokens + data.usage.output_tokens,
-      },
+      } : undefined,
     };
   }
 
@@ -417,9 +392,9 @@ export class LLMAPI {
    */
   private static async anthropicStreamChat(
     messages: ChatMessage[],
-    callback: ExtendedStreamCallback,
+    callback: StreamCallback,
     options?: { temperature?: number; maxTokens?: number },
-  ): Promise<ExtendedLLMResponse> {
+  ): Promise<LLMResponse> {
     const config = this.config!;
     let fullContent = "";
 
@@ -529,207 +504,19 @@ If the question is about a specific part of the paper, refer to that part in you
   }
 }
 
-/**
- * Extended LLM API configuration (with provider support)
- */
-export interface ExtendedLLMConfig {
-  provider: LLMProvider;
-  apiKey: string;
-  model: string;
-  maxTokens?: number;
-  temperature?: number;
-}
+// ============== Legacy Compatibility Aliases ==============
 
 /**
- * LLM API configuration
+ * @deprecated Use LLMConfig instead
  */
-export interface LLMConfig {
-  apiUrl: string;
-  apiKey: string;
-  model: string;
-  temperature?: number;
-  maxTokens?: number;
-}
+export type ExtendedLLMConfig = LLMConfig;
 
 /**
- * Get LLM configuration from preferences
+ * @deprecated Use LLMResponse instead
  */
-export function getLLMConfig(): LLMConfig {
-  const prefs = {
-    apiUrl:
-      getPref("apiUrl") || "https://api.minimax.chat/v1/text/chatcompletion_v2",
-    apiKey: getPref("apiKey") || "",
-    model: getPref("model") || "abab6.5s-chat",
-    temperature: getPref("temperature") ?? 0.7,
-    maxTokens: getPref("maxTokens") ?? 4096,
-  };
-
-  return prefs;
-}
+export type ExtendedLLMResponse = LLMResponse;
 
 /**
- * Update LLM configuration
+ * @deprecated Use StreamCallback instead
  */
-export function updateLLMConfig(config: Partial<LLMConfig>): void {
-  if (config.apiUrl !== undefined) {
-    setPref("apiUrl", config.apiUrl);
-  }
-  if (config.apiKey !== undefined) {
-    setPref("apiKey", config.apiKey);
-  }
-  if (config.model !== undefined) {
-    setPref("model", config.model);
-  }
-  if (config.temperature !== undefined) {
-    setPref("temperature", config.temperature);
-  }
-  if (config.maxTokens !== undefined) {
-    setPref("maxTokens", config.maxTokens);
-  }
-}
-
-/**
- * Call LLM API (non-streaming)
- */
-export async function callLLM(
-  messages: LLMMessage[],
-  options?: {
-    model?: string;
-    temperature?: number;
-    maxTokens?: number;
-  },
-): Promise<LLMResponse> {
-  const config = getLLMConfig();
-
-  const request: LLMRequest = {
-    model: options?.model || config.model,
-    messages,
-    stream: false,
-    temperature: options?.temperature ?? config.temperature,
-    max_tokens: options?.maxTokens ?? config.maxTokens,
-  };
-
-  const response = await fetch(config.apiUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify(request),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`LLM API error: ${response.status} - ${errorText}`);
-  }
-
-  const data = (await response.json()) as LLMResponse;
-  return data;
-}
-
-/**
- * Call LLM API with streaming
- */
-export async function* callLLMStream(
-  messages: LLMMessage[],
-  options?: {
-    model?: string;
-    temperature?: number;
-    maxTokens?: number;
-  },
-): AsyncGenerator<StreamChunk> {
-  const config = getLLMConfig();
-
-  const request: LLMRequest = {
-    model: options?.model || config.model,
-    messages,
-    stream: true,
-    temperature: options?.temperature ?? config.temperature,
-    max_tokens: options?.maxTokens ?? config.maxTokens,
-  };
-
-  const response = await fetch(config.apiUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify(request),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`LLM API error: ${response.status} - ${errorText}`);
-  }
-
-  if (!response.body) {
-    throw new Error("LLM API response has no body");
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-
-    if (done) {
-      break;
-    }
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || !trimmed.startsWith("data:")) {
-        continue;
-      }
-
-      const data = trimmed.slice(5).trim();
-
-      if (data === "[DONE]") {
-        return;
-      }
-
-      try {
-        const chunk: StreamChunk = JSON.parse(data);
-        yield chunk;
-      } catch (e) {
-        // Skip invalid JSON
-        if (typeof ztoolkit !== "undefined") {
-          ztoolkit.log("Paper Copilot: Failed to parse stream chunk:", e);
-        }
-      }
-    }
-  }
-}
-
-/**
- * Call LLM with streaming and callback
- */
-export async function callLLMWithStream(
-  messages: LLMMessage[],
-  onChunk: StreamCallback,
-  options?: {
-    model?: string;
-    temperature?: number;
-    maxTokens?: number;
-  },
-): Promise<string> {
-  let fullContent = "";
-
-  for await (const chunk of callLLMStream(messages, options)) {
-    const content = chunk.choices[0]?.delta?.content || "";
-    fullContent += content;
-
-    const result = await onChunk(chunk, fullContent);
-    // Allow callback to return false to stop streaming
-    if (result === false) {
-      break;
-    }
-  }
-
-  return fullContent;
-}
+export type ExtendedStreamCallback = StreamCallback;
