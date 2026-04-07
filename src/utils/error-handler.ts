@@ -465,6 +465,371 @@ export class ErrorHandler {
   }
 }
 
+// ============== Toast Notification System ==============
+
+export interface ToastOptions {
+  message: string;
+  type?: "info" | "success" | "warning" | "error";
+  duration?: number;
+  title?: string;
+}
+
+export interface ToastNotification {
+  id: string;
+  message: string;
+  type: "info" | "success" | "warning" | "error";
+  title?: string;
+  duration: number;
+  element?: HTMLElement;
+}
+
+/**
+ * Toast notification manager for non-blocking user feedback
+ */
+export class ToastManager {
+  private static containerId = "paper-copilot-toast-container";
+  private static notifications: Map<string, ToastNotification> = new Map();
+  private static defaultDuration = 4000;
+
+  /**
+   * Show a toast notification
+   */
+  public static show(options: ToastOptions): string {
+    const id = `toast_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const {
+      message,
+      type = "info",
+      duration = this.defaultDuration,
+      title,
+    } = options;
+
+    // Ensure container exists
+    this.ensureContainer();
+
+    // Create toast element
+    const toast = document.createElement("div");
+    toast.id = id;
+    toast.className = `paper-copilot-toast paper-copilot-toast-${type}`;
+    toast.style.cssText = `
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 12px 16px;
+      margin-bottom: 8px;
+      background: ${this.getBackgroundColor(type)};
+      border-left: 4px solid ${this.getBorderColor(type)};
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      animation: paperCopilotToastSlideIn 0.3s ease-out;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 14px;
+      max-width: 350px;
+      opacity: 0;
+      transform: translateX(100%);
+      transition: opacity 0.3s, transform 0.3s;
+    `;
+
+    const icon = this.getIcon(type);
+    const titleHtml = title ? `<strong style="display: block; margin-bottom: 4px;">${title}</strong>` : "";
+
+    toast.innerHTML = `
+      <span style="font-size: 18px; flex-shrink: 0;">${icon}</span>
+      <div style="flex: 1; color: #333;">
+        ${titleHtml}
+        <span style="line-height: 1.4;">${message}</span>
+      </div>
+      <button class="toast-close" style="
+        background: none;
+        border: none;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 0;
+        color: #666;
+        flex-shrink: 0;
+        line-height: 1;
+      ">×</button>
+    `;
+
+    // Add close button handler
+    const closeBtn = toast.querySelector(".toast-close");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => this.dismiss(id));
+    }
+
+    // Add to container
+    const container = document.getElementById(this.containerId);
+    container?.appendChild(toast);
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+      toast.style.opacity = "1";
+      toast.style.transform = "translateX(0)";
+    });
+
+    // Store notification
+    const notification: ToastNotification = {
+      id,
+      message,
+      type,
+      title,
+      duration,
+      element: toast,
+    };
+    this.notifications.set(id, notification);
+
+    // Auto dismiss
+    if (duration > 0) {
+      setTimeout(() => this.dismiss(id), duration);
+    }
+
+    return id;
+  }
+
+  /**
+   * Show success toast
+   */
+  public static success(message: string, title?: string, duration?: number): string {
+    return this.show({ message, type: "success", title, duration });
+  }
+
+  /**
+   * Show error toast
+   */
+  public static error(message: string, title?: string, duration?: number): string {
+    return this.show({ message, type: "error", title, duration: duration || 6000 });
+  }
+
+  /**
+   * Show warning toast
+   */
+  public static warning(message: string, title?: string, duration?: number): string {
+    return this.show({ message, type: "warning", title, duration });
+  }
+
+  /**
+   * Show info toast
+   */
+  public static info(message: string, title?: string, duration?: number): string {
+    return this.show({ message, type: "info", title, duration });
+  }
+
+  /**
+   * Dismiss a toast notification
+   */
+  public static dismiss(id: string): void {
+    const notification = this.notifications.get(id);
+    if (!notification) return;
+
+    const toast = notification.element;
+    if (toast) {
+      toast.style.opacity = "0";
+      toast.style.transform = "translateX(100%)";
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 300);
+    }
+
+    this.notifications.delete(id);
+  }
+
+  /**
+   * Dismiss all notifications
+   */
+  public static dismissAll(): void {
+    for (const id of this.notifications.keys()) {
+      this.dismiss(id);
+    }
+  }
+
+  /**
+   * Ensure toast container exists
+   */
+  private static ensureContainer(): void {
+    let container = document.getElementById(this.containerId);
+    if (!container) {
+      container = document.createElement("div");
+      container.id = this.containerId;
+      container.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 100000;
+        display: flex;
+        flex-direction: column;
+      `;
+      document.body.appendChild(container);
+
+      // Add animation styles
+      const style = document.createElement("style");
+      style.textContent = `
+        @keyframes paperCopilotToastSlideIn {
+          from {
+            opacity: 0;
+            transform: translateX(100%);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+
+  private static getBackgroundColor(type: string): string {
+    switch (type) {
+      case "success": return "#e8f5e9";
+      case "error": return "#ffebee";
+      case "warning": return "#fff3e0";
+      default: return "#e3f2fd";
+    }
+  }
+
+  private static getBorderColor(type: string): string {
+    switch (type) {
+      case "success": return "#4caf50";
+      case "error": return "#f44336";
+      case "warning": return "#ff9800";
+      default: return "#2196f3";
+    }
+  }
+
+  private static getIcon(type: string): string {
+    switch (type) {
+      case "success": return "✅";
+      case "error": return "❌";
+      case "warning": return "⚠️";
+      default: return "ℹ️";
+    }
+  }
+}
+
+// ============== Retry Mechanism ==============
+
+export interface RetryOptions {
+  maxAttempts?: number;
+  initialDelay?: number;
+  maxDelay?: number;
+  backoffMultiplier?: number;
+  retryableErrors?: ((error: any) => boolean) | RegExp[];
+  onRetry?: (attempt: number, error: Error, delay: number) => void;
+}
+
+/**
+ * Execute a function with retry logic
+ */
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: RetryOptions = {},
+): Promise<T> {
+  const {
+    maxAttempts = 3,
+    initialDelay = 1000,
+    maxDelay = 30000,
+    backoffMultiplier = 2,
+    retryableErrors = [
+      /network/i,
+      /timeout/i,
+      /rate.limit/i,
+      /429/,
+      /503/,
+      /502/,
+    ],
+    onRetry,
+  } = options;
+
+  let lastError: Error;
+  let delay = initialDelay;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      // Check if we should retry
+      if (attempt === maxAttempts) {
+        break;
+      }
+
+      // Check if error is retryable
+      const isRetryable = Array.isArray(retryableErrors)
+        ? retryableErrors.some((pattern) => {
+            if (pattern instanceof RegExp) {
+              return pattern.test(lastError.message);
+            }
+            if (typeof pattern === "function") {
+              return pattern(lastError);
+            }
+            return false;
+          })
+        : retryableErrors(lastError);
+
+      if (!isRetryable) {
+        throw lastError;
+      }
+
+      // Call onRetry callback
+      if (onRetry) {
+        onRetry(attempt, lastError, delay);
+      }
+
+      // Wait before retry
+      await new Promise((resolve) => setTimeout(resolve, delay));
+
+      // Calculate next delay with exponential backoff
+      delay = Math.min(delay * backoffMultiplier, maxDelay);
+    }
+  }
+
+  throw lastError!;
+}
+
+/**
+ * Decorator for automatic retry on failure
+ */
+export function withRetryDecorator(options: RetryOptions = {}): MethodDecorator {
+  return function (
+    target: any,
+    propertyKey: string | symbol,
+    descriptor: TypedPropertyDescriptor<any>,
+  ) {
+    const originalMethod = descriptor.value;
+
+    descriptor.value = async function (...args: any[]) {
+      return withRetry(
+        () => originalMethod.apply(this, args),
+        options,
+      );
+    };
+
+    return descriptor;
+  };
+}
+
+// ============== Enhanced Error Handler Integration ==============
+
+// Override ErrorHandler.notifyUser to use Toast when available
+const originalNotifyUser = ErrorHandler.notifyUser.bind(ErrorHandler);
+ErrorHandler.notifyUser = function(error: Error | string): void {
+  // Try Toast first for non-critical errors
+  const message = this.getUserMessage(error);
+  
+  if (typeof ToastManager !== "undefined") {
+    const errorCode = typeof error === "string" ? error : "UNKNOWN_ERROR";
+    if (errorCode.includes("timeout") || errorCode.includes("rate")) {
+      ToastManager.warning(message, "Paper Copilot");
+    } else {
+      ToastManager.error(message, "Paper Copilot");
+    }
+  } else {
+    // Fallback to original behavior
+    originalNotifyUser(error);
+  }
+};
+
 /**
  * Decorator for error handling
  */
