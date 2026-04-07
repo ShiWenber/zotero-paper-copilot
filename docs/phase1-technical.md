@@ -3,15 +3,13 @@
 ## 1.1 环境搭建
 
 ### Zotero 版本选择
-
 - **推荐**: Zotero 7 (最新稳定版)
 - Zotero 7 使用 Firefox 128 ESR 内核
 - 支持 WebExtension 插件
 
 ### 开发环境要求
-
 ```bash
-# 1. Node.js 18+
+# 1. Node.js 18+ 
 node --version  # >= 18
 
 # 2. npm 或 pnpm
@@ -25,7 +23,6 @@ git --version
 ```
 
 ### 初始化项目
-
 ```bash
 # 克隆官方模板
 git clone https://github.com/zotero/zotero-plugin-template.git zotero-moonlight
@@ -47,10 +44,10 @@ npm run build
 
 ### 两种架构对比
 
-| 架构                    | 优点                 | 缺点               |
-| ----------------------- | -------------------- | ------------------ |
-| **WebExtension** (推荐) | 现代、跨平台、易开发 | 功能受限           |
-| XUL/XPD                 | 功能强大             | 仅桌面端、维护困难 |
+| 架构 | 优点 | 缺点 |
+|---|---|---|
+| **WebExtension** (推荐) | 现代、跨平台、易开发 | 功能受限 |
+| XUL/XPD | 功能强大 | 仅桌面端、维护困难 |
 
 ### WebExtension 架构组件
 
@@ -71,7 +68,6 @@ zotero-moonlight/
 ```
 
 ### manifest.json 核心配置
-
 ```json
 {
   "manifest_version": 3,
@@ -98,15 +94,12 @@ zotero-moonlight/
 ## 1.3 PDF.js 集成
 
 ### Zotero 7 内置 PDF.js
-
 Zotero 7 已经集成 PDF.js，位于：
-
 ```
 zotero-install/resource/pdfjs/
 ```
 
 ### 在阅读窗口获取 PDF
-
 ```javascript
 // content.js
 async function getPDFViewer() {
@@ -114,27 +107,26 @@ async function getPDFViewer() {
   const pane = Zotero.getActiveZoteroPane();
   const item = pane.getSelectedItems()[0];
   const pdfWindow = Zotero.Standalone.maybeOpenPDFWindow(item);
-
+  
   // 方法 2: 直接访问 PDF.js
-  const pdfViewer = document.querySelector("pdf-viewer");
+  const pdfViewer = document.querySelector('pdf-viewer');
   return pdfViewer;
 }
 ```
 
 ### 选中文本获取
-
 ```javascript
 // 监听文本选择
-document.addEventListener("mouseup", async (event) => {
+document.addEventListener('mouseup', async (event) => {
   const selection = window.getSelection();
   const selectedText = selection.toString().trim();
-
+  
   if (selectedText.length > 0) {
     // 发送到侧边栏
     browser.runtime.sendMessage({
-      type: "TEXT_SELECTED",
+      type: 'TEXT_SELECTED',
       text: selectedText,
-      itemId: getCurrentItemId(),
+      itemId: getCurrentItemId()
     });
   }
 });
@@ -145,32 +137,29 @@ document.addEventListener("mouseup", async (event) => {
 ## 1.4 侧边栏 UI 框架 (Vue 3)
 
 ### 安装 Vue
-
 ```bash
 npm install vue @vitejs/plugin-vue
 npm install -D vite
 ```
 
 ### 侧边栏创建
-
 ```javascript
 // content.js
 function createSidebar() {
-  const sidebar = document.createElement("div");
-  sidebar.id = "moonlight-sidebar";
+  const sidebar = document.createElement('div');
+  sidebar.id = 'moonlight-sidebar';
   sidebar.innerHTML = '<div id="moonlight-app"></div>';
   document.body.appendChild(sidebar);
-
+  
   // 挂载 Vue
-  import("./components/App.vue").then(({ default: App }) => {
+  import('./components/App.vue').then(({ default: App }) => {
     const app = createApp(App);
-    app.mount("#moonlight-app");
+    app.mount('#moonlight-app');
   });
 }
 ```
 
 ### Vue 组件结构
-
 ```
 components/
 ├── App.vue              # 主组件
@@ -185,30 +174,29 @@ components/
 ## 1.5 LLM API 对接设计
 
 ### API 抽象层
-
 ```javascript
 // services/llm.js
 class LLMService {
-  constructor(provider = "openai") {
+  constructor(provider = 'openai') {
     this.provider = provider;
     this.apiKey = null;
   }
-
+  
   async chat(messages, options = {}) {
     // 流式响应
     const response = await fetch(this.getEndpoint(), {
-      method: "POST",
+      method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({
-        model: options.model || "gpt-4",
+        model: options.model || 'gpt-4',
         messages,
-        stream: true,
-      }),
+        stream: true
+      })
     });
-
+    
     return this.parseStreamResponse(response);
   }
-
+  
   // 支持的 provider
   // - OpenAI (GPT-4, GPT-4o)
   // - Anthropic (Claude)
@@ -217,7 +205,6 @@ class LLMService {
 ```
 
 ### 提示词设计
-
 ```javascript
 // prompts.js
 export const SYSTEM_PROMPTS = {
@@ -237,8 +224,8 @@ export const SYSTEM_PROMPTS = {
 4. 结论
 
 请用中文输出。`,
-
-  translate: `请翻译以下文本，保留专业术语的英文原文：`,
+  
+  translate: `请翻译以下文本，保留专业术语的英文原文：`
 };
 ```
 
@@ -246,15 +233,15 @@ export const SYSTEM_PROMPTS = {
 
 ## 1.6 任务分解 (Phase 1)
 
-| 任务              | 预估时间     | 依赖     |
-| ----------------- | ------------ | -------- |
-| 环境搭建          | 1天          | -        |
-| 运行官方模板      | 1天          | 环境搭建 |
-| 实现侧边栏基础 UI | 2天          | 模板运行 |
-| PDF 文本选择监听  | 2天          | 侧边栏   |
-| LLM API 对接      | 3天          | 侧边栏   |
-| AI 对话功能       | 3天          | API 对接 |
-| **小计**          | **约 12 天** |          |
+| 任务 | 预估时间 | 依赖 |
+|---|---|---|
+| 环境搭建 | 1天 | - |
+| 运行官方模板 | 1天 | 环境搭建 |
+| 实现侧边栏基础 UI | 2天 | 模板运行 |
+| PDF 文本选择监听 | 2天 | 侧边栏 |
+| LLM API 对接 | 3天 | 侧边栏 |
+| AI 对话功能 | 3天 | API 对接 |
+| **小计** | **约 12 天** | |
 
 ---
 

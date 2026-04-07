@@ -13,7 +13,6 @@
 **描述**：使用 Zotero 内置的 XUL (XML User Interface Language) 和 HTML/CSS 进行 UI 开发。
 
 **优点**：
-
 - ✅ 完全兼容 Zotero 内置浏览器引擎
 - ✅ 无需额外依赖，构建产物小
 - ✅ 可使用 Zotero Plugin Toolkit 的 UI 工具
@@ -21,13 +20,11 @@
 - ✅ 调试方便，直接在 Zotero 环境中运行
 
 **缺点**：
-
 - ❌ 开发体验不如现代前端框架
 - ❌ 需要学习 XUL 语法
 - ❌ 状态管理需要手动处理
 
 **代表插件**：
-
 - `zotero-gpt` - AI 问答插件
 - `zotero-pdf-translate` - PDF 翻译插件
 - `zotero-better-notes` - 笔记增强插件
@@ -39,20 +36,17 @@
 **描述**：使用 React 构建 UI，通过打包后嵌入 Zotero。
 
 **优点**：
-
 - ✅ 现代前端开发体验
 - ✅ 丰富的组件生态
 - ✅ 状态管理方便 (Redux/Context)
 
 **缺点**：
-
 - ❌ 打包体积大
 - ❌ 需要处理与 Zotero 环境的兼容
 - ❌ 需要处理 CSS 隔离问题
 - ❌ 社区使用案例较少
 
 **适用场景**：
-
 - 复杂的企业级插件
 - 需要大量交互的界面
 
@@ -63,12 +57,10 @@
 **描述**：使用 Vue 3 构建 UI。
 
 **优点**：
-
 - ✅ 开发体验好
 - ✅ 模板语法直观
 
 **缺点**：
-
 - ❌ **与 Zotero 内置浏览器不完全兼容**
 - ❌ 需要额外配置打包工具
 - ❌ 社区几乎没有成功案例
@@ -83,12 +75,10 @@
 **描述**：使用 Svelte 框架。
 
 **优点**：
-
 - ✅ 编译时框架，打包体积小
 - ✅ 响应式简单
 
 **缺点**：
-
 - ❌ 社区使用案例极少
 - ❌ 需要自行处理 Zotero 兼容性
 
@@ -99,7 +89,6 @@
 ### 方案：原生 HTML + Zotero Plugin Toolkit
 
 **技术栈**：
-
 - **UI**: 原生 HTML/CSS/JavaScript
 - **工具库**: zotero-plugin-toolkit
 - **打包**: zotero-plugin-scaffold (已有)
@@ -124,7 +113,7 @@ const sidebar = ztoolkit.UI.createElement(doc, "div", {
     height: "100%",
     background: "#fff",
     // ...
-  },
+  }
 });
 ```
 
@@ -154,12 +143,12 @@ ztoolkit.UI.register(sidebar, {
 
 ## 5. 结论
 
-| 方案                | 推荐度     | 备注               |
-| ------------------- | ---------- | ------------------ |
+| 方案 | 推荐度 | 备注 |
+|---|---|---|
 | 原生 HTML + Toolkit | ⭐⭐⭐⭐⭐ | 社区主流，兼容性好 |
-| React               | ⭐⭐⭐     | 复杂项目可选       |
-| Vue 3               | ⭐         | 不推荐             |
-| Svelte              | ⭐⭐       | 可尝试，社区案例少 |
+| React | ⭐⭐⭐ | 复杂项目可选 |
+| Vue 3 | ⭐ | 不推荐 |
+| Svelte | ⭐⭐ | 可尝试，社区案例少 |
 
 **最终建议**：使用 **原生 HTML + Zotero Plugin Toolkit** 进行 UI 开发，这是社区验证过的最佳方案。
 

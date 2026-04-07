@@ -5,14 +5,12 @@
 ### 1. Node.js 18+
 
 **检查是否已安装：**
-
 ```bash
 node --version
 npm --version
 ```
 
 **如未安装，推荐使用 fnm 管理 Node 版本：**
-
 ```bash
 # 安装 fnm (macOS/Linux)
 curl -fsSL https://fnm.vercel.app/install | bash
@@ -32,13 +30,11 @@ node --version
 ### 2. Git
 
 **检查：**
-
 ```bash
 git --version
 ```
 
 **如未安装：**
-
 - macOS: `brew install git`
 - Ubuntu: `sudo apt install git`
 - Windows: https://git-scm.com/download/win
@@ -50,7 +46,6 @@ git --version
 **下载：** https://www.zotero.org/download/
 
 **安装后验证：**
-
 - 启动 Zotero
 - 菜单栏 → 帮助 → 关于 Zotero
 - 确认版本 ≥ 7.0
