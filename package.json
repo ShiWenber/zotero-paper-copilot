@@ -39,12 +39,12 @@
     "@zotero-plugin/eslint-config": "^0.6.9",
     "chai": "^6.2.1",
     "diff": "^8.0.4",
-    "eslint": "^10.1.0",
+    "eslint": "^10.2.0",
     "mocha": "^11.7.5",
-    "prettier": "^3.7.4",
+    "prettier": "^3.8.3",
     "serialize-javascript": "^7.0.5",
     "typescript": "^5.9.3",
-    "zotero-plugin-scaffold": "^0.8.5",
+    "zotero-plugin-scaffold": "^0.8.6",
     "zotero-types": "^4.1.2"
   },
   "prettier": {
